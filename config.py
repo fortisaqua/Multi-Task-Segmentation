@@ -6,20 +6,20 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'record_dir',"/opt/Multi-Task-data-process/records",
+    'record_dir',"/opt/Multi-Task-data-process/records/",
     'Directory where tfrecord files will be stored'
 )
 
 tf.app.flags.DEFINE_integer(
-    'block_shape_1',64,
+    'block_shape_1',48,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_2',64,
+    'block_shape_2',48,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',64,
+    'block_shape_3',48,
     'shape of single data block'
 )
 
@@ -33,8 +33,13 @@ tf.app.flags.DEFINE_integer(
     'batch size for testing'
 )
 
+tf.app.flags.DEFINE_integer(
+    'max_iteration_num',3352200,
+    'maximum training step'
+)
+
 tf.app.flags.DEFINE_string(
-    'train_models_dir','./train_models',
+    'train_models_dir','./train_models/',
     'location to save trained models'
 )
 
@@ -54,8 +59,18 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'artery_weight',0.5,
+    'airway_fore_weight',0.9,
+    'foreground weight for lost function of airway part'
+)
+
+tf.app.flags.DEFINE_float(
+    'artery_weight',1,
     'weight of artery segmentation branch while doing the training'
+)
+
+tf.app.flags.DEFINE_float(
+    'artery_fore_weight',0.9,
+    'foreground weight for lost function of artery part'
 )
 
 tf.app.flags.DEFINE_float(
@@ -64,11 +79,21 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
+    'lung_fore_weight',0.7,
+    'foreground weight for lost function of lung part'
+)
+
+tf.app.flags.DEFINE_float(
     'accept_threshold',0.8,
     'threshold for judging if the corresponding pixel can be classfied as foreground'
 )
 
 tf.app.flags.DEFINE_float(
-    'traing_rate_decay',0.99,
+    'training_rate_base',0.001,
+    'original learning rate'
+)
+
+tf.app.flags.DEFINE_float(
+    'training_rate_decay',0.95,
     'decay rate for training rate'
 )
