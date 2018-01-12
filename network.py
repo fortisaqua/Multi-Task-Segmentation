@@ -12,7 +12,7 @@ import gc
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Network():
     def __init__(self):
@@ -96,7 +96,7 @@ class Network():
             segment_sigmoid = tf.sigmoid(segment_predict,name='segmoid_predict')
             #modify predict
             modified_segment = tf.maximum(segment_sigmoid-threshold,0.01,name='modified_segment')
-            return modified_segment*10
+            return modified_segment
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
@@ -139,6 +139,9 @@ class Network():
             inputs = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_test,block_shape[0],block_shape[1],block_shape[2]])
             training = tf.placeholder(tf.bool)
             lung,airway,artery = net.Dense_Net(inputs,training,net.batch_size_test,FLAGS.accept_threshold)
+            lung_pred_mask = tf.cast((lung > 0.1), tf.float32)
+            airway_pred_mask = tf.cast((airway > 0.1), tf.float32)
+            artery_pred_mask = tf.cast((artery > 0.1), tf.float32)
             fake_mean = tf.reduce_mean(lung+airway+artery)
             tf.summary.scalar('fake_mean',fake_mean)
             merge_summary_op = tf.summary.merge_all()
@@ -152,7 +155,9 @@ class Network():
             init_op = tf.group(tf.global_variables_initializer(),
                                tf.local_variables_initializer())
             sess.run(init_op)
-            lung_np,airway_np,artey_np,merge_summary = sess.run([lung,airway,artery,merge_summary_op],feed_dict={inputs:np.random.rand(net.batch_size_test,block_shape[0],block_shape[1],block_shape[2]),training:False})
+            lung_np,airway_np,artey_np,merge_summary\
+                = sess.run([lung,airway,artery,merge_summary_op],
+                           feed_dict={inputs:np.int16(np.random.rand(net.batch_size_test,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
             summary_writer.add_summary(merge_summary, global_step=0)
             print np.max(lung_np),"  ",np.min(lung_np)
             print np.max(airway_np),"  ",np.min(airway_np)
@@ -180,9 +185,9 @@ class Network():
         artery_pred = tf.reshape(artery_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
 
         # binary predict mask
-        lung_pred_mask = tf.cast((lung_pred>0.1),tf.float32)
-        airway_pred_mask = tf.cast((airway_pred>0.1),tf.float32)
-        artery_pred_mask = tf.cast((artery_pred>0.1),tf.float32)
+        lung_pred_mask = tf.cast((lung_pred>0.01),tf.float32)
+        airway_pred_mask = tf.cast((airway_pred>0.01),tf.float32)
+        artery_pred_mask = tf.cast((artery_pred>0.01),tf.float32)
 
         # labels
         lung_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
@@ -190,36 +195,46 @@ class Network():
         artery_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
 
         # accuracy
-        lung_acc = 2*tf.reduce_sum(lung_lable*lung_pred_mask)/tf.reduce_mean(lung_lable+lung_pred_mask)
+        lung_acc = 2*tf.reduce_sum(lung_lable*lung_pred_mask)/(tf.reduce_mean(lung_lable+lung_pred_mask)+1e-6)
         tf.summary.scalar('lung_acc', lung_acc)
-        airway_acc = 2*tf.reduce_sum(airway_lable*airway_pred_mask)/tf.reduce_mean(airway_lable+airway_pred_mask)
+        airway_acc = 2*tf.reduce_sum(airway_lable*airway_pred_mask)/(tf.reduce_mean(airway_lable+airway_pred_mask)+1e-6)
         tf.summary.scalar('airway_acc', airway_acc)
-        artery_acc = 2*tf.reduce_sum(artery_lable*artery_pred_mask)/tf.reduce_mean(artery_lable+artery_pred_mask)
+        artery_acc = 2*tf.reduce_sum(artery_lable*artery_pred_mask)/(tf.reduce_mean(artery_lable+artery_pred_mask)+1e-6)
         tf.summary.scalar('artery_acc', artery_acc)
 
         # loss function
         w_fore_lung = flags.lung_fore_weight
         w_fore_airway = flags.airway_fore_weight
         w_fore_artery = flags.artery_fore_weight
+
         # lung loss
-        lung_loss = flags.lung_weight*tf.reduce_mean(tf.reduce_mean(w_fore_lung*lung_lable*tf.log(lung_pred + 1e-8),reduction_indices=[1]) +
+        lung_loss = flags.lung_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_lung*lung_lable*tf.log(lung_pred + 1e-8),reduction_indices=[1]) -
                                                        tf.reduce_mean((1-w_fore_lung)*(1-lung_lable)*tf.log(1-lung_pred + 1e-8),reduction_indices=[1]))
         tf.summary.scalar('lung_loss', lung_loss)
+        # predict_mean_lung = tf.reduce_mean(tf.log(1-lung_pred + 1e-8),reduction_indices=[1])
+        # mask_mean_lung = tf.reduce_mean((1-lung_lable))
+
         #  airway loss
-        airway_loss = flags.airway_weight*tf.reduce_mean(tf.reduce_mean(w_fore_airway*airway_lable*tf.log(airway_pred + 1e-8),reduction_indices=[1]) +
+        airway_loss = flags.airway_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_airway*airway_lable*tf.log(airway_pred + 1e-8),reduction_indices=[1]) -
                                                        tf.reduce_mean((1-w_fore_airway)*(1-airway_lable)*tf.log(1-airway_pred + 1e-8),reduction_indices=[1]))
         tf.summary.scalar('airway_loss', airway_loss)
+        # predict_mean_airway = tf.reduce_mean(tf.log(1-airway_pred + 1e-8),reduction_indices=[1])
+        # mask_mean_airway = tf.reduce_mean((1 - airway_lable))
+
         # artery loss
-        artery_loss = flags.artery_weight*tf.reduce_mean(tf.reduce_mean(w_fore_artery*artery_lable*tf.log(artery_pred + 1e-8),reduction_indices=[1]) +
+        artery_loss = flags.artery_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_artery*artery_lable*tf.log(artery_pred + 1e-8),reduction_indices=[1]) -
                                                        tf.reduce_mean((1-w_fore_artery)*(1-artery_lable)*tf.log(1-artery_pred + 1e-8),reduction_indices=[1]))
         tf.summary.scalar('artery_loss', artery_loss)
+        # predict_mean_arte/ry = tf.reduce_mean(tf.log(1 - artery_pred + 1e-8), reduction_indices=[1])
+        # mask_mean_artery = tf.reduce_mean((1 - artery_lable))
+
         # total loss
         total_loss = lung_loss+airway_loss+artery_loss
         tf.summary.scalar('total_loss',total_loss)
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 33522/2,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 33522/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
@@ -253,6 +268,8 @@ class Network():
             # load variables if saved before
             if len(os.listdir(self.train_models_dir)) > 0:
                 print "load saved model"
+                sess.run(tf.group(tf.global_variables_initializer(),
+                                  tf.local_variables_initializer()))
                 saver.restore(sess, self.train_models_dir)
             else:
                 sess.run(tf.group(tf.global_variables_initializer(),
@@ -267,39 +284,51 @@ class Network():
 
             # main train loop
             # for i in range(flags.max_iteration_num):
-            for i in range(21):
-                # organize a batch of data for training
-                airway_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
-                artery_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
-                lung_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
-                original_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+            try:
+                for i in range(flags.max_iteration_num):
+                    # organize a batch of data for training
+                    airway_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+                    artery_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+                    lung_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+                    original_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
 
-                # store values into data block
-                for m in range(flags.batch_size_train):
-                    airway_data, artery_data, lung_data, original_data = \
-                        sess.run([airway_block, artery_block, lung_block, original_block])
-                    airway_np[m, :, :, :] += airway_data
-                    artery_np[m, :, :, :] += artery_data
-                    lung_np[m, :, :, :] += lung_data
-                    original_np[m, :, :, :] += original_data
+                    # store values into data block
+                    for m in range(flags.batch_size_train):
+                        airway_data, artery_data, lung_data, original_data = \
+                            sess.run([airway_block, artery_block, lung_block, original_block])
+                        airway_np[m, :, :, :] += airway_data
+                        artery_np[m, :, :, :] += artery_data
+                        lung_np[m, :, :, :] += lung_data
+                        original_np[m, :, :, :] += original_data
 
-                sum_train,accuracy_airway,accuracy_artery,accuracy_lung,\
-                        airway_l_val,artery_l_val,lung_l_val,total_l_val\
-                            =sess.run([merge_summary_op,airway_acc,artery_acc,lung_acc,
-                                  airway_loss,artery_loss,lung_loss,total_loss],
-                              feed_dict={X:original_np,lung_lable:lung_np,airway_lable:airway_np,artery_lable:artery_np,training:False})
+                    train__, step_num = sess.run([train_op, global_step],
+                                                 feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
+                                                            artery_lable: artery_np, training: True})
 
-                train__ , step_num= sess.run([train_op,global_step],feed_dict={X:original_np,lung_lable:lung_np,airway_lable:airway_np,artery_lable:artery_np,training:False})
+                    if i%5 ==0:
+                        sum_train, accuracy_airway, accuracy_artery, accuracy_lung, \
+                        airway_l_val, artery_l_val, lung_l_val, total_l_val \
+                            = sess.run([merge_summary_op, airway_acc, artery_acc, lung_acc,
+                                        airway_loss, artery_loss, lung_loss, total_loss],
+                                       feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
+                                                  artery_lable: artery_np, training: False})
 
-                summary_writer.add_summary(sum_train,global_step=int(step_num))
-
-                if i%5 ==0:
-                    print "step %d , total loss = %f lung loss = %f airway loss = %f artery loss = %f \nairway accuracy = %f , artery accuracy = %f , lung accuracy = %f" \
-                          % (int(step_num), total_l_val, lung_l_val, airway_l_val, artery_l_val
-                             , accuracy_airway, accuracy_artery, accuracy_lung)
-                if i%10 ==0:
-                    saver.save(sess,model_dir)
+                        summary_writer.add_summary(sum_train, global_step=int(step_num))
+                        print "step %d , total loss = %f lung loss = %f airway loss = %f artery loss = %f \nairway accuracy = %f , artery accuracy = %f , lung accuracy = %f" \
+                              % (int(step_num), total_l_val, lung_l_val, airway_l_val, artery_l_val
+                                 , accuracy_airway, accuracy_artery, accuracy_lung)
+                        # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
+                        # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
+                        # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
+                    if i%20 ==0:
+                        saver.save(sess,model_dir)
+            except Exception,e:
+                print e
+                # exit(2)
+                coord.request_stop(e)
+            coord.request_stop()
+            coord.join(enqueue_threads)
 
 net = Network()
-# net.check_net()
-net.train()
+net.check_net()
+# net.train()

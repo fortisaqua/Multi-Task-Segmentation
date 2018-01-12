@@ -34,7 +34,7 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'max_iteration_num',3352200,
+    'max_iteration_num',5000000,
     'maximum training step'
 )
 
@@ -89,11 +89,11 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_base',0.001,
+    'training_rate_base',0.0001,
     'original learning rate'
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_decay',0.95,
+    'training_rate_decay',0.9,
     'decay rate for training rate'
 )
