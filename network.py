@@ -340,9 +340,9 @@ class Network():
                                        feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , total loss = %f lung loss = %f airway loss = %f artery loss = %f \nairway accuracy = %f , artery accuracy = %f , lung accuracy = %f\n=============\n" \
-                              % (int(step_num), total_l_val, lung_l_val, airway_l_val, artery_l_val
-                                 , accuracy_airway, accuracy_artery, accuracy_lung)
+                        print "train :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================\n" \
+                              % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
+                                 , accuracy_lung, accuracy_airway, accuracy_artery)
 
                     if i%test_step ==0 and i>0:
                         # block testing part
@@ -370,10 +370,10 @@ class Network():
                                        feed_dict={X: original_np_test, lung_lable: lung_np_test, airway_lable: airway_np_test,
                                                   artery_lable: artery_np_test, training: False})
 
-                        summary_writer_test.add_summary(sum_test, global_step=int(step_num/test_step))
-                        print "test :\nstep %d , total loss = %f lung loss = %f airway loss = %f artery loss = %f \nairway accuracy = %f , artery accuracy = %f , lung accuracy = %f\n=============\n" \
-                              % (int(step_num/test_step), total_l_val, lung_l_val, airway_l_val, artery_l_val
-                                 , accuracy_airway, accuracy_artery, accuracy_lung)
+                        summary_writer_test.add_summary(sum_test, global_step=int(step_num))
+                        print "test :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================\n" \
+                              % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
+                                 , accuracy_lung, accuracy_airway, accuracy_artery)
                         # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
                         # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
                         # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
