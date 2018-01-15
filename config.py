@@ -6,8 +6,13 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'record_dir',"/opt/Multi-Task-data-process/records/",
+    'record_dir',"/opt/Multi-Task-data-process/records_artery/",
     'Directory where tfrecord files will be stored'
+)
+
+tf.app.flags.DEFINE_string(
+    'record_test_dir','/opt/Multi-Task-data-process/records_artery_test/',
+    'Directory where test data stored'
 )
 
 tf.app.flags.DEFINE_integer(
@@ -44,7 +49,7 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'summary_dir_train','./train_sum',
+    'summary_dir_train','./train_sum/',
     'location to save tensorboard datas from training'
 )
 
