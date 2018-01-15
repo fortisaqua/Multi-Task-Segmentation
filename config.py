@@ -6,12 +6,12 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'record_dir',"/opt/Multi-Task-data-process/records_artery/",
+    'record_dir',"/opt/Multi-Task-data-process/records/",
     'Directory where tfrecord files will be stored'
 )
 
 tf.app.flags.DEFINE_string(
-    'record_test_dir','/opt/Multi-Task-data-process/records_artery_test/',
+    'record_test_dir','/opt/Multi-Task-data-process/records_test/',
     'Directory where test data stored'
 )
 
@@ -29,18 +29,23 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_train',2,
+    'batch_size_train',1,
     'batch size for training'
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_test',4,
+    'batch_size_test',1,
     'batch size for testing'
 )
 
 tf.app.flags.DEFINE_integer(
     'max_iteration_num',5000000,
     'maximum training step'
+)
+
+tf.app.flags.DEFINE_integer(
+    'test_step',20,
+    'steps period that will do testing'
 )
 
 tf.app.flags.DEFINE_string(
@@ -51,6 +56,11 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     'summary_dir_train','./train_sum/',
     'location to save tensorboard datas from training'
+)
+
+tf.app.flags.DEFINE_string(
+    'summary_dir_test','./test_sum/',
+    'location to save tensorboard datas from testing'
 )
 
 tf.app.flags.DEFINE_string(
