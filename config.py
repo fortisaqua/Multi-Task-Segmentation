@@ -29,12 +29,12 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_train',1,
+    'batch_size_train',2,
     'batch size for training'
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_test',1,
+    'batch_size_test',2,
     'batch size for testing'
 )
 
@@ -79,7 +79,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'artery_weight',1,
+    'artery_weight',4,
     'weight of artery segmentation branch while doing the training'
 )
 
