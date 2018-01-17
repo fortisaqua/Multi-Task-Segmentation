@@ -374,6 +374,8 @@ class Network():
                         print "test :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================\n" \
                               % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
                                  , accuracy_lung, accuracy_airway, accuracy_artery)
+                        print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
+                        print "artery percentage : ",str(np.float32(np.sum(np.float32(artery_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
                         # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
                         # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
