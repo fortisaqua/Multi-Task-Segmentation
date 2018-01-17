@@ -364,9 +364,11 @@ class Network():
                             original_np_test[m, :, :, :] += original_data_test
 
                         sum_test, accuracy_airway, accuracy_artery, accuracy_lung, \
-                        airway_l_val, artery_l_val, lung_l_val, total_l_val \
+                        airway_l_val, artery_l_val, lung_l_val, total_l_val, \
+                        airway_np_pred,artery_np_pred\
                             = sess.run([merge_summary_op, airway_acc, artery_acc, lung_acc,
-                                        airway_loss, artery_loss, lung_loss, total_loss],
+                                        airway_loss, artery_loss, lung_loss, total_loss,
+                                        airway_pred, artery_pred],
                                        feed_dict={X: original_np_test, lung_lable: lung_np_test, airway_lable: airway_np_test,
                                                   artery_lable: artery_np_test, training: False})
 
@@ -376,6 +378,8 @@ class Network():
                                  , accuracy_lung, accuracy_airway, accuracy_artery)
                         print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         print "artery percentage : ",str(np.float32(np.sum(np.float32(artery_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
+                        print "prediction of airway : maximum = ",np.max(airway_np_pred)," minimum = ",np.min(airway_np_pred)
+                        print "prediction of artery : maximum = ",np.max(artery_np_pred)," minimum = ",np.min(artery_np_pred)
                         # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
                         # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
                         # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
