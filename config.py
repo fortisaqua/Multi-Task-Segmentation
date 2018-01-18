@@ -16,15 +16,15 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_integer(
-    'block_shape_1',48,
+    'block_shape_1',64,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_2',48,
+    'block_shape_2',64,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',48,
+    'block_shape_3',64,
     'shape of single data block'
 )
 
