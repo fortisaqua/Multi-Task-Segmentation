@@ -62,7 +62,7 @@ class Network():
             growth_up = 6
             depth_up = 2
         else:
-            growth_up = 6
+            growth_up = 8
             depth_up = 4
 
         with tf.variable_scope(name+'_segment'):
