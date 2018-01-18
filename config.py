@@ -99,12 +99,12 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'accept_threshold',0.8,
+    'accept_threshold',0.5,
     'threshold for judging if the corresponding pixel can be classfied as foreground'
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_base',0.0001,
+    'training_rate_base',0.0005,
     'original learning rate'
 )
 
