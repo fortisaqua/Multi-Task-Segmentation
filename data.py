@@ -154,7 +154,7 @@ class TF_Records():
         if not isinstance(self.records,list):
             tfrecords_filename = [self.records]
         tfrecords_filename = self.records
-        filename_queue = tf.train.string_input_producer(tfrecords_filename,num_epochs=10)
+        filename_queue = tf.train.string_input_producer(tfrecords_filename,shuffle=True)
 
         ret = {}
         options = tf.python_io.TFRecordOptions(TFRecordCompressionType.ZLIB)
