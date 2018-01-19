@@ -60,10 +60,10 @@ class Network():
             depth_up = 0
         if 'airway' in name:
             growth_up = 6
-            depth_up = 2
+            depth_up = 1
         else:
-            growth_up = 8
-            depth_up = 4
+            growth_up = 12
+            depth_up = 5
 
         with tf.variable_scope(name+'_segment'):
             # up sample input 1
@@ -103,9 +103,9 @@ class Network():
             return modified_segment,segment_sigmoid
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
-        original_down = 16
-        growth_down = 12
-        depth_down = 4
+        original_down = 24
+        growth_down = 4
+        depth_down = 2
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
@@ -240,7 +240,7 @@ class Network():
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 30000/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 20000/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
@@ -373,7 +373,7 @@ class Network():
                                                   artery_lable: artery_np_test, training: False})
 
                         summary_writer_test.add_summary(sum_test, global_step=int(step_num))
-                        print "test :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================\n" \
+                        print "\ntest :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================" \
                               % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
                                  , accuracy_lung, accuracy_airway, accuracy_artery)
                         print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))

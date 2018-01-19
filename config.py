@@ -6,25 +6,25 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'record_dir',"/opt/Multi-Task-data-process/records/",
+    'record_dir',"/opt/Multi-Task-data-process/records_48/",
     'Directory where tfrecord files will be stored'
 )
 
 tf.app.flags.DEFINE_string(
-    'record_test_dir','/opt/Multi-Task-data-process/records_test/',
+    'record_test_dir','/opt/Multi-Task-data-process/records_test_48/',
     'Directory where test data stored'
 )
 
 tf.app.flags.DEFINE_integer(
-    'block_shape_1',64,
+    'block_shape_1',48,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_2',64,
+    'block_shape_2',48,
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',64,
+    'block_shape_3',48,
     'shape of single data block'
 )
 
@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_string(
-    'train_models_dir','./train_models/',
+    'train_models_dir','./train_models/train_model.ckpt',
     'location to save trained models'
 )
 
