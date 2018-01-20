@@ -12,7 +12,7 @@ import gc
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Network():
     def __init__(self):
@@ -179,7 +179,6 @@ class Network():
         record_dir_test = self.record_dir_test
         batch_size_train = self.batch_size_train
         batch_size_test = self.batch_size_test
-        model_dir = self.train_models_dir
         test_step = self.test_step
         LEARNING_RATE_BASE = flags.training_rate_base
         LEARNING_RATE_DECAY = flags.training_rate_decay
@@ -295,7 +294,7 @@ class Network():
                 print "load saved model"
                 sess.run(tf.group(tf.global_variables_initializer(),
                                   tf.local_variables_initializer()))
-                saver.restore(sess, self.train_models_dir)
+                saver.restore(sess, self.train_models_dir+"train_models.ckpt")
             else:
                 sess.run(tf.group(tf.global_variables_initializer(),
                                   tf.local_variables_initializer()))
@@ -332,7 +331,7 @@ class Network():
                                                  feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
                                                             artery_lable: artery_np, training: True})
 
-                    if i%5==0:
+                    if i%10==0:
                         sum_train, accuracy_airway, accuracy_artery, accuracy_lung, \
                         airway_l_val, artery_l_val, lung_l_val, total_l_val \
                             = sess.run([merge_summary_op, airway_acc, artery_acc, lung_acc,
@@ -340,7 +339,7 @@ class Network():
                                        feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================\n" \
+                        print "train :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================" \
                               % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
                                  , accuracy_lung, accuracy_airway, accuracy_artery)
 
@@ -379,12 +378,13 @@ class Network():
                         print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         print "artery percentage : ",str(np.float32(np.sum(np.float32(artery_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
-                        print "prediction of artery : maximum = ",np.max(artery_np_sig)," minimum = ",np.min(artery_np_sig)
+                        print "prediction of artery : maximum = ",np.max(artery_np_sig)," minimum = ",np.min(artery_np_sig),'\n'
                         # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
                         # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
                         # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
-                    if i%50 ==0:
-                        saver.save(sess,model_dir)
+                    if i%100 ==0:
+                        saver.save(sess,self.train_models_dir+"train_models.ckpt")
+                        print "regular model saved!"
             except Exception,e:
                 print e
                 # exit(2)

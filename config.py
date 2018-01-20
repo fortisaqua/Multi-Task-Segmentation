@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_string(
-    'train_models_dir','./train_models/train_model.ckpt',
+    'train_models_dir','./train_models/',
     'location to save trained models'
 )
 
