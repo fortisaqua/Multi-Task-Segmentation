@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import random
 from util import read_dicoms
 import SimpleITK as ST
+import gc
 
 class Data_block:
     # single input data block
@@ -61,6 +62,8 @@ class Test_data():
         partial_result = result_array
         this_result = Data_block(ranger,partial_result)
         self.results[block_num]=this_result
+        del self.blocks[block_num]
+        gc.collect()
 
     def get_result(self):
         ret=np.zeros(self.image_shape,np.float32)
