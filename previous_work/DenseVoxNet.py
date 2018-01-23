@@ -1,9 +1,11 @@
 import os
 import shutil
 import tensorflow as tf
+import scipy.io
 import tools
 import numpy as np
 import time
+import test
 import SimpleITK as ST
 from dicom_read import read_dicoms
 import gc
@@ -17,9 +19,9 @@ GPU0 = '0'
 input_shape = [64,64,128]
 output_shape = [64,64,128]
 type_num = 0
-already_trained=297
-epoch_walked=297
-upper_threshold = 0.8
+already_trained=545
+epoch_walked=545
+upper_threshold = 0.9
 
 ###############################################################
 config={}
@@ -77,7 +79,7 @@ class Network:
         # conv_input_1=tools.Ops.conv3d(X,k=3,out_c=2,str=2,name='conv_input_down')
         # conv_input_normed=tools.Ops.batch_norm(conv_input_1, 'bn_dense_0_0', training=training)
         # network start
-        conv_input= tools.Ops.conv3d(X, k=3, out_c=original, str=2, name='conv_input')
+        conv_input=tools.Ops.conv3d(X,k=3,out_c=original,str=2,name='conv_input')
         with tf.device('/gpu:'+GPU0):
             ##### dense block 1
             c_e = []
@@ -90,17 +92,17 @@ class Network:
             for j in range(dense_layer_num):
                 layer = tools.Ops.batch_norm(layers_e[-1], 'bn_dense_1_' + str(j), training=training)
                 layer = tools.Ops.xxlu(layer, name='relu')
-                layer = tools.Ops.conv3d(layer, k=3, out_c=growth, str=s_e[j], name='dense_1_' + str(j))
+                layer = tools.Ops.conv3d(layer,k=3,out_c=growth,str=s_e[j],name='dense_1_'+str(j))
                 next_input = tf.concat([layer,layers_e[-1]],axis=4)
                 layers_e.append(next_input)
 
         # middle down sample
             mid_layer = tools.Ops.batch_norm(layers_e[-1], 'bn_mid', training=training)
-            mid_layer = tools.Ops.xxlu(mid_layer, name='relu')
-            mid_layer = tools.Ops.conv3d(mid_layer, k=1, out_c=original + growth * dense_layer_num, str=1, name='mid_conv')
-            mid_layer_down = tools.Ops.maxpool3d(mid_layer, k=2, s=2, pad='SAME')
+            mid_layer = tools.Ops.xxlu(mid_layer,name='relu')
+            mid_layer = tools.Ops.conv3d(mid_layer,k=1,out_c=original+growth*dense_layer_num,str=1,name='mid_conv')
+            mid_layer_down = tools.Ops.maxpool3d(mid_layer,k=2,s=2,pad='SAME')
 
-        ##### dense block 
+        ##### dense block
         with tf.device('/gpu:'+GPU0):
             c_d = []
             s_d = []
@@ -110,21 +112,21 @@ class Network:
                 c_d.append(original+growth*(dense_layer_num+i+1))
                 s_d.append(1)
             for j in range(dense_layer_num):
-                layer = tools.Ops.batch_norm(layers_d[-1], 'bn_dense_2_' + str(j), training=training)
+                layer = tools.Ops.batch_norm(layers_d[-1],'bn_dense_2_'+str(j),training=training)
                 layer = tools.Ops.xxlu(layer, name='relu')
-                layer = tools.Ops.conv3d(layer, k=3, out_c=growth, str=s_d[j], name='dense_2_' + str(j))
+                layer = tools.Ops.conv3d(layer,k=3,out_c=growth,str=s_d[j],name='dense_2_'+str(j))
                 next_input = tf.concat([layer,layers_d[-1]],axis=4)
                 layers_d.append(next_input)
 
             ##### final up-sampling
-            bn_1 = tools.Ops.batch_norm(layers_d[-1], 'bn_after_dense', training=training)
-            relu_1 = tools.Ops.xxlu(bn_1, name='relu')
-            conv_27 = tools.Ops.conv3d(relu_1, k=1, out_c=original + growth * dense_layer_num * 2, str=1, name='conv_up_sample_1')
-            deconv_1 = tools.Ops.deconv3d(conv_27, k=2, out_c=128, str=2, name='deconv_up_sample_1')
+            bn_1 = tools.Ops.batch_norm(layers_d[-1],'bn_after_dense',training=training)
+            relu_1 = tools.Ops.xxlu(bn_1 ,name='relu')
+            conv_27 = tools.Ops.conv3d(relu_1,k=1,out_c=original+growth*dense_layer_num*2,str=1,name='conv_up_sample_1')
+            deconv_1 = tools.Ops.deconv3d(conv_27,k=2,out_c=128,str=2,name='deconv_up_sample_1')
             concat_up = tf.concat([deconv_1,mid_layer],axis=4)
-            deconv_2 = tools.Ops.deconv3d(concat_up, k=2, out_c=64, str=2, name='deconv_up_sample_2')
+            deconv_2 = tools.Ops.deconv3d(concat_up,k=2,out_c=64,str=2,name='deconv_up_sample_2')
 
-            predict_map = tools.Ops.conv3d(deconv_2, k=1, out_c=1, str=1, name='predict_map')
+            predict_map = tools.Ops.conv3d(deconv_2,k=1,out_c=1,str=1,name='predict_map')
 
             # zoom in layer
             # predict_map_normed = tools.Ops.batch_norm(predict_map,'bn_after_dense_1',training=training)
@@ -146,7 +148,7 @@ class Network:
             layers_d =[]
             layers_d.append(layer)
             for i in range(1,6,1):
-                layer = tools.Ops.conv3d(layers_d[-1], k=4, out_c=c_d[i], str=s_d[i], name='d_1' + str(i))
+                layer = tools.Ops.conv3d(layers_d[-1],k=4,out_c=c_d[i],str=s_d[i],name='d_1'+str(i))
                 if i!=5:
                     layer = tools.Ops.xxlu(layer, name='lrelu')
                     # batch normal layer
@@ -158,7 +160,7 @@ class Network:
         return tf.nn.sigmoid(y)
 
     def train(self,configure):
-        data = tools.Data(configure, epoch_walked)
+        data = tools.Data(configure,epoch_walked)
         best_acc = 0
         # X = tf.placeholder(shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]], dtype=tf.float32)
         X = tf.placeholder(shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]], dtype=tf.float32)
@@ -317,12 +319,12 @@ class Network:
                         final_img = ST.GetImageFromArray(np.transpose(to_be_transformed, [2, 1, 0]))
                         final_img.SetSpacing(test_data.space)
                         print "writing full testing result"
-                        print '/opt/analyse_airway/test_result/test_result' + str(epoch) + '.vtk'
-                        ST.WriteImage(final_img, '/opt/analyse_airway/test_result/test_result' + str(epoch) + '.vtk')
+                        print '/usr/analyse_airway/test_result/test_result' + str(epoch) + '.vtk'
+                        ST.WriteImage(final_img, '/usr/analyse_airway/test_result/test_result' + str(epoch) + '.vtk')
                         if epoch==0:
                             mask_img = ST.GetImageFromArray(np.transpose(array_mask, [2, 1, 0]))
                             mask_img.SetSpacing(test_data.space)
-                            ST.WriteImage(mask_img, '/opt/analyse_airway/test_result/test_mask.vtk')
+                            ST.WriteImage(mask_img, '/usr/analyse_airway/test_result/test_mask.vtk')
                         test_IOU = 2*np.sum(to_be_transformed*array_mask)/(np.sum(to_be_transformed)+np.sum(array_mask))
                         print "IOU accuracy: ",test_IOU
                         time_end = time.time()

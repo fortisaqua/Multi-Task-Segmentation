@@ -34,7 +34,7 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_test',2,
+    'batch_size_test',8,
     'batch size for testing'
 )
 

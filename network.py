@@ -8,7 +8,9 @@ from data import TF_Records
 import tools
 import config
 import gc
-
+import SimpleITK as ST
+import time
+import sys
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -135,14 +137,44 @@ class Network():
 
         return lung_predict,lung_sigmoid,airway_predict,airway_sigmoid,artery_predict,artery_sigmoid
 
+    # artery branch only network
+    def Dense_Net_Test(self,inputs,training,batch_size,threshold):
+        original_down = 24
+        growth_down = 4
+        depth_down = 2
+        casted_inputs = tf.cast(inputs,tf.float32)
+        X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
+
+        with tf.variable_scope('feature_extract'):
+            # dense block 1
+            dense_block_input_1 = tools.Ops.conv3d(X,k=3,out_c=original_down,str=1,name='dense_block_input_1')
+            dense_block_output_1 = self.dense_block(dense_block_input_1,growth_down,depth_down,'dense_block_1',training,scope='dense_block_1')
+
+            # down sample 1
+            down_sample_1 = tools.Ops.conv3d(dense_block_output_1,k=2,out_c=original_down+1*(growth_down*depth_down),str=2,name='down_sample_1')
+
+            # dense block 2
+            dense_block_output_2 = self.dense_block(down_sample_1,growth_down,depth_down,'dense_block_2',training,scope='dense_block_2')
+
+            # down sample 2
+            down_sample_2 = tools.Ops.conv3d(dense_block_output_2,k=2,out_c=original_down+2*(growth_down*depth_down),str=2,name='down_sample_2')
+
+            # dense block 3
+            dense_block_output_3 = self.dense_block(down_sample_2,growth_down,depth_down,'dense_block_3',training,scope='dense_block_3')
+
+        artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
+                                         name='artery', training=training, threshold=threshold)
+
+        return artery_predict,artery_sigmoid
+
     # check if the network is correct
     def check_net(self):
         try:
             net = Network()
             block_shape = net.block_shape
-            inputs = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_test,block_shape[0],block_shape[1],block_shape[2]])
+            inputs = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
             training = tf.placeholder(tf.bool)
-            lung,lung_sig,airway,airway_sig,artery,artery_sig = net.Dense_Net(inputs,training,net.batch_size_test,FLAGS.accept_threshold)
+            lung,lung_sig,airway,airway_sig,artery,artery_sig = net.Dense_Net(inputs,training,net.batch_size_train,FLAGS.accept_threshold)
             lung_pred_mask = tf.cast((lung > 0.1), tf.float32)
             airway_pred_mask = tf.cast((airway > 0.1), tf.float32)
             artery_pred_mask = tf.cast((artery > 0.1), tf.float32)
@@ -161,7 +193,7 @@ class Network():
             sess.run(init_op)
             lung_np,airway_np,artey_np,merge_summary\
                 = sess.run([lung,airway,artery,merge_summary_op],
-                           feed_dict={inputs:np.int16(np.random.rand(net.batch_size_test,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
+                           feed_dict={inputs:np.int16(np.random.rand(net.batch_size_train,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
             summary_writer.add_summary(merge_summary, global_step=0)
             print np.max(lung_np),"  ",np.min(lung_np)
             print np.max(airway_np),"  ",np.min(airway_np)
@@ -239,7 +271,7 @@ class Network():
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 20000/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 23599/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
@@ -263,7 +295,7 @@ class Network():
                                     single_blocks['original'],
                                     ))
         (airway_block, artery_block, lung_block, original_block) = queue.dequeue()
-        qr = tf.train.QueueRunner(queue, [enqueue_op] * 4)
+        qr = tf.train.QueueRunner(queue, [enqueue_op] * 2)
 
         # test data part
         records_test = ut.get_records(record_dir_test)
@@ -393,6 +425,93 @@ class Network():
             coord.join(enqueue_threads)
             coord.join(enqueue_threads_test)
 
-net = Network()
-# net.check_net()
-net.train()
+    def test(self,dicom_dir):
+        flags = self.FLAGS
+        block_shape = self.block_shape
+        batch_size_test = self.batch_size_test
+        data_type = "dicom_data"
+        X = tf.placeholder(dtype=tf.float32, shape=[batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
+        training = tf.placeholder(tf.bool)
+        artery_pred, artery_sig = self.Dense_Net_Test(X, training,
+                                                      flags.batch_size_test,
+                                                      flags.accept_threshold)
+        artery_pred = tf.reshape(artery_pred, [batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
+
+        # binary predict mask
+        artery_pred_mask = tf.cast((artery_pred > 0.01), tf.float32)
+
+        saver = tf.train.Saver(max_to_keep=1)
+        config = tf.ConfigProto(allow_soft_placement=True)
+        with tf.Session(config=config) as sess:
+            # load variables if saved before
+            if len(os.listdir(self.train_models_dir)) > 0:
+                print "load saved model"
+                sess.run(tf.group(tf.global_variables_initializer(),
+                                  tf.local_variables_initializer()))
+                saver.restore(sess, self.train_models_dir + "train_models.ckpt")
+            else:
+                print "no model detected from %s"%(self.train_models_dir)
+                exit(1)
+
+            test_data = tools.Test_data(dicom_dir, block_shape,data_type)
+            test_data.organize_blocks()
+            block_numbers = test_data.blocks.keys()
+            blocks_num = len(block_numbers)
+            time1 = time.time()
+            sys.stdout.write("\r>>>deep learning calculating : %f" % (0.0)+"%")
+            sys.stdout.flush()
+            for i in range(0, blocks_num, batch_size_test):
+                batch_numbers = []
+                if i + batch_size_test < blocks_num:
+                    temp_batch_size = batch_size_test
+                else:
+                    temp_batch_size = blocks_num - i
+                temp_input = np.zeros(
+                    [batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
+                for j in range(temp_batch_size):
+                    temp_num = block_numbers[i + j]
+                    temp_block = test_data.blocks[temp_num]
+                    batch_numbers.append(temp_num)
+                    block_array = temp_block.load_data()
+                    data_block_shape = np.shape(block_array)
+                    temp_input[j, 0:data_block_shape[0], 0:data_block_shape[1], 0:data_block_shape[2]] += block_array
+                artery_predict = sess.run(artery_pred_mask,feed_dict={X: temp_input,training: False})
+                for j in range(temp_batch_size):
+                    test_data.upload_result(batch_numbers[j], artery_predict[j, :, :, :])
+                if (i)%(batch_size_test*10)==0:
+                    sys.stdout.write("\r>>>deep learning calculating : %f"%((1.0*i)*100/blocks_num)+"%")
+                    sys.stdout.flush()
+
+            sys.stdout.write("\r>>>deep learning calculating : %f" % (100.0)+"%")
+            sys.stdout.flush()
+            time2 = time.time()
+            print "deep learning time consume : ",str(time2-time1)
+            time3 = time.time()
+            test_result_array = test_data.get_result()
+            print "result shape: ", np.shape(test_result_array)
+            r_s = np.shape(test_result_array)  # result shape
+            e_t = 10  # edge thickness
+            to_be_transformed = np.zeros(r_s, np.float32)
+            to_be_transformed[e_t:r_s[0] - e_t, e_t:r_s[1] - e_t, 0:r_s[2] - e_t] += test_result_array[
+                                                                                     e_t:r_s[0] - e_t,
+                                                                                     e_t:r_s[1] - e_t,
+                                                                                     0:r_s[2] - e_t]
+            print "maximum value in mask: ", np.max(to_be_transformed)
+            print "minimum value in mask: ", np.min(to_be_transformed)
+            final_img = ST.GetImageFromArray(np.transpose(np.int8(to_be_transformed), [2, 1, 0]))
+            final_img.SetSpacing(test_data.space)
+            time4 = time.time()
+            print "post processing time consume : ",str(time4-time3)
+            print "writing final testing result"
+            print './test_result/test_result_final.vtk'
+            ST.WriteImage(final_img, './test_result/test_result_final.vtk')
+            return final_img
+
+if __name__ == "__main__":
+    test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/XIAO_PING_XIA/original1'
+    net = Network()
+    # net.check_net()
+    time1 = time.time()
+    net.test(test_dicom_dir)
+    time2 = time.time()
+    print "total time consume ",str(time2-time1)
