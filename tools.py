@@ -45,8 +45,8 @@ class Test_data():
         original_shape=np.shape(self.image_array)
         img_array = self.image_array
         print 'data shape: ', original_shape
-        for i in range(0,original_shape[0],self.block_shape[0]/2):
-            for j in range(0,original_shape[1],self.block_shape[1]/2):
+        for i in range(0,original_shape[0],self.block_shape[0]):
+            for j in range(0,original_shape[1],self.block_shape[1]):
                 for k in range(0,original_shape[2],self.block_shape[2]/2):
                     if i<original_shape[0] and j<original_shape[1] and k<original_shape[2]:
                         block_array = img_array[i:i+self.block_shape[0],j:j+self.block_shape[1],k:k+self.block_shape[2]]
