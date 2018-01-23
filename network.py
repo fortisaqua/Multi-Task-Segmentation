@@ -162,10 +162,12 @@ class Network():
             # dense block 3
             dense_block_output_3 = self.dense_block(down_sample_2,growth_down,depth_down,'dense_block_3',training,scope='dense_block_3')
 
-        artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
-                                         name='artery', training=training, threshold=threshold)
+        # artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
+        #                                  name='artery', training=training, threshold=threshold)
 
-        return artery_predict,artery_sigmoid
+        lung_predict,lung_sigmoid = self.Segment_part(dense_block_output_3,dense_block_input_1,down_sample_1,down_sample_2,name='lung',training=training,threshold=threshold)
+
+        return lung_predict,lung_sigmoid
 
     # check if the network is correct
     def check_net(self):
@@ -377,12 +379,12 @@ class Network():
 
                     if i%test_step ==0 and i>0:
                         # block testing part
-                        airway_np_test = np.zeros([batch_size_test, block_shape[0], block_shape[1], block_shape[2]],
+                        airway_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                              np.int16)
-                        artery_np_test = np.zeros([batch_size_test, block_shape[0], block_shape[1], block_shape[2]],
+                        artery_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                              np.int16)
-                        lung_np_test = np.zeros([batch_size_test, block_shape[0], block_shape[1], block_shape[2]], np.int16)
-                        original_np_test = np.zeros([batch_size_test, block_shape[0], block_shape[1], block_shape[2]],
+                        lung_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]], np.int16)
+                        original_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                                np.int16)
 
                         # store values into data block
@@ -457,6 +459,7 @@ class Network():
             test_data.organize_blocks()
             block_numbers = test_data.blocks.keys()
             blocks_num = len(block_numbers)
+            print "block count: ",blocks_num
             time1 = time.time()
             sys.stdout.write("\r>>>deep learning calculating : %f" % (0.0)+"%")
             sys.stdout.flush()
@@ -508,10 +511,11 @@ class Network():
             return final_img
 
 if __name__ == "__main__":
-    test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/XIAO_PING_XIA/original1'
+    test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
     # net.check_net()
-    time1 = time.time()
-    net.test(test_dicom_dir)
-    time2 = time.time()
-    print "total time consume ",str(time2-time1)
+    net.train()
+    # time1 = time.time()
+    # net.test(test_dicom_dir)
+    # time2 = time.time()
+    # print "total time consume ",str(time2-time1)
