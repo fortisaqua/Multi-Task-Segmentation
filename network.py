@@ -485,7 +485,7 @@ class Network():
             sys.stdout.write("\r>>>deep learning calculating : %f" % (100.0)+"%")
             sys.stdout.flush()
             time2 = time.time()
-            print "deep learning time consume : ",str(time2-time1)
+            print "\ndeep learning time consume : ",str(time2-time1)
             time3 = time.time()
             test_result_array = test_data.get_result()
             print "result shape: ", np.shape(test_result_array)

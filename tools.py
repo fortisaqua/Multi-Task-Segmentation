@@ -58,7 +58,7 @@ class Test_data():
 
     def upload_result(self,block_num,result_array):
         ranger = self.blocks[block_num].get_range()
-        partial_result = np.float32((result_array-0.01)>0)
+        partial_result = result_array
         this_result = Data_block(ranger,partial_result)
         self.results[block_num]=this_result
 
@@ -73,11 +73,12 @@ class Test_data():
                 ymax=ranger[3]
                 zmin=ranger[4]
                 zmax=ranger[5]
-                temp_result = self.results[number].load_data()[:,:,:,0]
+                temp_result = self.results[number].load_data()[:,:,:]
                 # temp_shape = np.shape(temp_result)
                 ret[xmin:xmax,ymin:ymax,zmin:zmax]+=temp_result[:xmax-xmin,:ymax-ymin,:zmax-zmin]
             except Exception,e:
-                print np.shape(self.results[number].load_data()[:,:,:,0]),self.results[number].get_range()
+                # print e
+                print np.shape(self.results[number].load_data()[:,:,:]),self.results[number].get_range()
         return np.float32(ret>=2)
 
 class Ops:
