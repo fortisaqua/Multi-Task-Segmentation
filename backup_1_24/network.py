@@ -169,42 +169,15 @@ class Network():
 
         return lung_predict,lung_sigmoid
 
-    def Dis(self, X, Y,training,batch_size):
-        casted_inputs_X = tf.cast(X, tf.float32)
-        casted_inputs_Y = tf.cast(Y, tf.float32)
-        X_input = tf.reshape(casted_inputs_X, [batch_size, self.block_shape[0], self.block_shape[1], self.block_shape[2], 1],
-                       name='input_dis_X')
-        Y_input = tf.reshape(casted_inputs_Y, [batch_size, self.block_shape[0], self.block_shape[1], self.block_shape[2], 1],
-                       name='input_dis_Y')
-        layer = tf.concat([X_input,Y_input],axis=4)
-        c_d = [1,2,32,63,128,192]
-        s_d = [0,2,2,2,2,2]
-        layers_d =[]
-        layers_d.append(layer)
-        for i in range(1,6,1):
-            layer = tools.Ops.conv3d(layers_d[-1],k=4,out_c=c_d[i],str=s_d[i],name='d_1'+str(i))
-            if i!=5:
-                layer = tools.Ops.xxlu(layer, name='lrelu')
-                # batch normal layer
-                layer = tools.Ops.batch_norm(layer, 'bn_up' + str(i), training=training)
-            layers_d.append(layer)
-        y = tf.reshape(layers_d[-1],[batch_size,-1])
-        # for j in range(len(layers_d)-1):
-        #     y = tf.concat([y,tf.reshape(layers_d[j],[batch_size,-1])],axis=1)
-        return tf.nn.sigmoid(y)
-
     # check if the network is correct
     def check_net(self):
         try:
             net = Network()
             block_shape = net.block_shape
-            X = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
+            inputs = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
             training = tf.placeholder(tf.bool)
-            with tf.variable_scope('generator'):
-                lung,lung_sig,artery,artery_sig = net.Dense_Net(X,training,net.batch_size_train,FLAGS.accept_threshold)
+            lung,lung_sig,artery,artery_sig = net.Dense_Net(inputs,training,net.batch_size_train,FLAGS.accept_threshold)
             lung_pred_mask = tf.cast((lung > 0.1), tf.float32)
-            with tf.variable_scope('discriminator'):
-                XY_fake_pair = self.Dis(X, artery_sig, training, self.batch_size_train)
             # airway_pred_mask = tf.cast((airway > 0.1), tf.float32)
             artery_pred_mask = tf.cast((artery > 0.1), tf.float32)
             fake_mean = tf.reduce_mean(lung+artery)
@@ -222,7 +195,7 @@ class Network():
             sess.run(init_op)
             lung_np,artey_np,merge_summary\
                 = sess.run([lung,artery,merge_summary_op],
-                           feed_dict={X:np.int16(np.random.rand(net.batch_size_train,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
+                           feed_dict={inputs:np.int16(np.random.rand(net.batch_size_train,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
             summary_writer.add_summary(merge_summary, global_step=0)
             print np.max(lung_np),"  ",np.min(lung_np)
             # print np.max(airway_np),"  ",np.min(airway_np)
@@ -245,9 +218,7 @@ class Network():
         LEARNING_RATE_DECAY = flags.training_rate_decay
         X = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         training = tf.placeholder(tf.bool)
-        with tf.variable_scope('generator'):
-            lung_pred,lung_sig,artery_pred,artery_sig = self.Dense_Net(X,training,flags.batch_size_train,flags.accept_threshold)
-
+        lung_pred,lung_sig,artery_pred,artery_sig = self.Dense_Net(X,training,flags.batch_size_train,flags.accept_threshold)
         lung_pred = tf.reshape(lung_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         # airway_pred = tf.reshape(airway_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         artery_pred = tf.reshape(artery_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
@@ -262,12 +233,6 @@ class Network():
         # airway_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         artery_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
 
-        # discriminator output
-        with tf.variable_scope('discriminator'):
-            XY_real_pair = self.Dis(X, artery_lable, training,flags.batch_size_train)
-        with tf.variable_scope('discriminator',reuse=True):
-            XY_fake_pair = self.Dis(X,artery_sig,training,flags.batch_size_train)
-
         # accuracy
         lung_acc = 2*tf.reduce_sum(lung_lable*lung_pred_mask)/(tf.reduce_sum(lung_lable+lung_pred_mask)+1e-6)
         tf.summary.scalar('lung_acc', lung_acc)
@@ -276,53 +241,35 @@ class Network():
         artery_acc = 2*tf.reduce_sum(artery_lable*artery_pred_mask)/(tf.reduce_sum(artery_lable+artery_pred_mask)+1e-6)
         tf.summary.scalar('artery_acc', artery_acc)
 
-        # generator cross entropy loss
+        # loss function
         w_fore_lung = flags.lung_fore_weight
         # w_fore_airway = flags.airway_fore_weight
         w_fore_artery = flags.artery_fore_weight
-        # lung loss
 
-        lung_lable_ = tf.reshape(lung_lable,shape=[batch_size_train,-1])
-        artery_lable_ = tf.reshape(artery_lable,shape=[batch_size_train,-1])
-        lung_pred_ = tf.reshape(lung_pred,shape=[batch_size_train,-1])
-        artery_pred_ = tf.reshape(artery_pred,shape=[batch_size_train,-1])
-        lung_loss = flags.lung_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_lung*lung_lable_*tf.log(lung_pred_ + 1e-8),reduction_indices=[1]) -
-                                                       tf.reduce_mean((1-w_fore_lung)*(1-lung_lable_)*tf.log(1-lung_pred_ + 1e-8),reduction_indices=[1]))
-        tf.summary.scalar('lung_loss_cross_entropy', lung_loss)
+        # lung loss
+        lung_loss = flags.lung_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_lung*lung_lable*tf.log(lung_pred + 1e-8),reduction_indices=[1]) -
+                                                       tf.reduce_mean((1-w_fore_lung)*(1-lung_lable)*tf.log(1-lung_pred + 1e-8),reduction_indices=[1]))
+        tf.summary.scalar('lung_loss', lung_loss)
         # predict_mean_lung = tf.reduce_mean(tf.log(1-lung_pred + 1e-8),reduction_indices=[1])
         # mask_mean_lung = tf.reduce_mean((1-lung_lable))
+
+        #  airway loss
+        # airway_loss = flags.airway_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_airway*airway_lable*tf.log(airway_pred + 1e-8),reduction_indices=[1]) -
+        #                                                tf.reduce_mean((1-w_fore_airway)*(1-airway_lable)*tf.log(1-airway_pred + 1e-8),reduction_indices=[1]))
+        # tf.summary.scalar('airway_loss', airway_loss)
+        # predict_mean_airway = tf.reduce_mean(tf.log(1-airway_pred + 1e-8),reduction_indices=[1])
+        # mask_mean_airway = tf.reduce_mean((1 - airway_lable))
+
         # artery loss
-        artery_loss = flags.artery_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_artery*artery_lable_*tf.log(artery_pred_ + 1e-8),reduction_indices=[1]) -
-                                                       tf.reduce_mean((1-w_fore_artery)*(1-artery_lable_)*tf.log(1-artery_pred_ + 1e-8),reduction_indices=[1]))
-        tf.summary.scalar('artery_loss_cross_entropy', artery_loss)
-        # predict_mean_artery = tf.reduce_mean(tf.log(1 - artery_pred + 1e-8), reduction_indices=[1])
+        artery_loss = flags.artery_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_artery*artery_lable*tf.log(artery_pred + 1e-8),reduction_indices=[1]) -
+                                                       tf.reduce_mean((1-w_fore_artery)*(1-artery_lable)*tf.log(1-artery_pred + 1e-8),reduction_indices=[1]))
+        tf.summary.scalar('artery_loss', artery_loss)
+        # predict_mean_arte/ry = tf.reduce_mean(tf.log(1 - artery_pred + 1e-8), reduction_indices=[1])
         # mask_mean_artery = tf.reduce_mean((1 - artery_lable))
 
-        # generator cross entropy loss
-        ge_loss = lung_loss+artery_loss
-        tf.summary.scalar('generator_cross_entropy_loss',ge_loss)
-
-        # discriminator and gan loss
-        gan_g_loss = -tf.reduce_mean(XY_fake_pair)
-        gan_d_loss = tf.reduce_mean(XY_fake_pair)-tf.reduce_mean(XY_real_pair)
-        tf.summary.scalar('dis_g_loss',gan_g_loss)
-        tf.summary.scalar('dis_d_loss',gan_d_loss)
-        alpha = tf.random_uniform(shape=[batch_size_train,block_shape[0]*block_shape[1]*block_shape[2]],minval=0.0,maxval=1.0)
-        artery_sig_ = tf.reshape(artery_sig,shape=[batch_size_train,-1])
-        diffenences_ = artery_sig_ - artery_lable_
-        interpolates = artery_lable_ + alpha*diffenences_
-        with tf.variable_scope('discriminator',reuse=True):
-            XY_fake_intep = self.Dis(X,interpolates,training,batch_size_train)
-        gradients = tf.gradients(XY_fake_intep,[interpolates])[0]
-        slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))
-        gradient_penalty = tf.reduce_mean((slopes - 1.0) ** 2)
-        gan_d_loss += 10 * gradient_penalty
-
-        # total generator loss
-        gan_g_w = 5
-        ge_w = 100 - gan_g_w
-        total_g_loss = ge_w*ge_loss + gan_g_w*gan_g_loss
-        tf.summary.scalar('total_g_loss', total_g_loss)
+        # total loss
+        total_loss = lung_loss+artery_loss
+        tf.summary.scalar('total_loss',total_loss)
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
@@ -331,10 +278,7 @@ class Network():
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
         # trainer
-        ge_var = [var for var in tf.trainable_variables() if var.name.startswith('generator')]
-        dis_var = [var for var in tf.trainable_variables() if var.name.startswith('discriminator')]
-        ge_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(total_g_loss,global_step,ge_var)
-        dis_train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(gan_d_loss,global_step,dis_var)
+        train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(total_loss, global_step)
 
         # data part
         records = ut.get_records(record_dir)
@@ -417,20 +361,20 @@ class Network():
                         lung_np[m, :, :, :] += lung_data
                         original_np[m, :, :, :] += original_data
 
-                    train_ge_, train_dis_,step_num = sess.run([ge_train_op,dis_train_op, global_step],
+                    train__, step_num = sess.run([train_op, global_step],
                                                  feed_dict={X: original_np, lung_lable: lung_np,
                                                             artery_lable: artery_np, training: True})
 
                     if i%10==0:
                         sum_train, accuracy_artery, accuracy_lung, \
-                        artery_l_val, lung_l_val, total_l_val,total_l_dis \
+                        artery_l_val, lung_l_val, total_l_val \
                             = sess.run([merge_summary_op, artery_acc, lung_acc,
-                                        artery_loss, lung_loss, total_g_loss,gan_d_loss],
+                                        artery_loss, lung_loss, total_loss],
                                        feed_dict={X: original_np, lung_lable: lung_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , lung loss = %f artery loss = %f total generator loss = %f total discriminator = %f \n\t\t\tlung accuracy = %f , artery accuracy = %f\n =====================" \
-                              % (int(step_num), lung_l_val, artery_l_val, total_l_val,total_l_dis
+                        print "train :\nstep %d , lung loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , artery accuracy = %f\n=====================" \
+                              % (int(step_num), lung_l_val, artery_l_val, total_l_val
                                  , accuracy_lung, accuracy_artery)
 
                     if i%test_step ==0 and i>0:
@@ -456,7 +400,7 @@ class Network():
                         artery_l_val, lung_l_val, total_l_val, \
                         artery_np_pred,artery_np_sig\
                             = sess.run([merge_summary_op, artery_acc, lung_acc,
-                                        artery_loss, lung_loss, total_g_loss,
+                                        artery_loss, lung_loss, total_loss,
                                         artery_pred,artery_sig],
                                        feed_dict={X: original_np_test, lung_lable: lung_np_test,
                                                   artery_lable: artery_np_test, training: False})
