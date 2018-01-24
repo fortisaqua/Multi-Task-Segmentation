@@ -14,7 +14,7 @@ import sys
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Network():
     def __init__(self):
@@ -55,7 +55,7 @@ class Network():
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
         growth_down = 12
-        depth_down = 4
+        depth_down = 6
 
         if 'lung' in name:
             growth_up = 6
@@ -65,7 +65,7 @@ class Network():
             depth_up = 1
         else:
             growth_up = 12
-            depth_up = 5
+            depth_up = 1
 
         with tf.variable_scope(name+'_segment'):
             # up sample input 1
@@ -106,8 +106,8 @@ class Network():
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
-        growth_down = 6
-        depth_down = 2
+        growth_down = 12
+        depth_down = 6
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
@@ -140,8 +140,8 @@ class Network():
     # artery branch only network
     def Dense_Net_Test(self,inputs,training,batch_size,threshold):
         original_down = 16
-        growth_down = 6
-        depth_down = 2
+        growth_down = 12
+        depth_down = 6
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
@@ -513,8 +513,8 @@ class Network():
 if __name__ == "__main__":
     test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
-    # net.check_net()
-    net.train()
+    net.check_net()
+    # net.train()
     # time1 = time.time()
     # net.test(test_dicom_dir)
     # time2 = time.time()
