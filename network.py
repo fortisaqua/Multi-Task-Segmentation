@@ -14,7 +14,7 @@ import sys
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Network():
     def __init__(self):
@@ -130,12 +130,12 @@ class Network():
 
         lung_predict,lung_sigmoid = self.Segment_part(dense_block_output_3,dense_block_input_1,down_sample_1,down_sample_2,
                                          name='lung',training=training,threshold=threshold)
-        airway_predict,airway_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
-                                         name='airway', training=training, threshold=threshold)
+        # airway_predict,airway_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
+        #                                  name='airway', training=training, threshold=threshold)
         artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
                                          name='artery', training=training, threshold=threshold)
 
-        return lung_predict,lung_sigmoid,airway_predict,airway_sigmoid,artery_predict,artery_sigmoid
+        return lung_predict,lung_sigmoid,artery_predict,artery_sigmoid
 
     # artery branch only network
     def Dense_Net_Test(self,inputs,training,batch_size,threshold):
@@ -176,16 +176,16 @@ class Network():
             block_shape = net.block_shape
             inputs = tf.placeholder(dtype=tf.float32,shape=[net.batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
             training = tf.placeholder(tf.bool)
-            lung,lung_sig,airway,airway_sig,artery,artery_sig = net.Dense_Net(inputs,training,net.batch_size_train,FLAGS.accept_threshold)
+            lung,lung_sig,artery,artery_sig = net.Dense_Net(inputs,training,net.batch_size_train,FLAGS.accept_threshold)
             lung_pred_mask = tf.cast((lung > 0.1), tf.float32)
-            airway_pred_mask = tf.cast((airway > 0.1), tf.float32)
+            # airway_pred_mask = tf.cast((airway > 0.1), tf.float32)
             artery_pred_mask = tf.cast((artery > 0.1), tf.float32)
-            fake_mean = tf.reduce_mean(lung+airway+artery)
+            fake_mean = tf.reduce_mean(lung+artery)
             tf.summary.scalar('fake_mean',fake_mean)
             merge_summary_op = tf.summary.merge_all()
             # a way to get shape from a tensor and convert it into a list
             print [int(d) for d in lung.get_shape()]
-            print [int(d) for d in airway.get_shape()]
+            # print [int(d) for d in airway.get_shape()]
             print [int(d) for d in artery.get_shape()]
             print "net has ",tools.Ops.variable_count()," variables"
             sess = tf.Session()
@@ -193,12 +193,12 @@ class Network():
             init_op = tf.group(tf.global_variables_initializer(),
                                tf.local_variables_initializer())
             sess.run(init_op)
-            lung_np,airway_np,artey_np,merge_summary\
-                = sess.run([lung,airway,artery,merge_summary_op],
+            lung_np,artey_np,merge_summary\
+                = sess.run([lung,artery,merge_summary_op],
                            feed_dict={inputs:np.int16(np.random.rand(net.batch_size_train,block_shape[0],block_shape[1],block_shape[2])*100),training:False})
             summary_writer.add_summary(merge_summary, global_step=0)
             print np.max(lung_np),"  ",np.min(lung_np)
-            print np.max(airway_np),"  ",np.min(airway_np)
+            # print np.max(airway_np),"  ",np.min(airway_np)
             print np.max(artey_np),"  ",np.min(artey_np)
             print "net is good!"
         except Exception,e:
@@ -218,32 +218,32 @@ class Network():
         LEARNING_RATE_DECAY = flags.training_rate_decay
         X = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         training = tf.placeholder(tf.bool)
-        lung_pred,lung_sig,airway_pred,airway_sig,artery_pred,artery_sig = self.Dense_Net(X,training,flags.batch_size_train,flags.accept_threshold)
+        lung_pred,lung_sig,artery_pred,artery_sig = self.Dense_Net(X,training,flags.batch_size_train,flags.accept_threshold)
         lung_pred = tf.reshape(lung_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
-        airway_pred = tf.reshape(airway_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
+        # airway_pred = tf.reshape(airway_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         artery_pred = tf.reshape(artery_pred,[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
 
         # binary predict mask
         lung_pred_mask = tf.cast((lung_pred>0.01),tf.float32)
-        airway_pred_mask = tf.cast((airway_pred>0.01),tf.float32)
+        # airway_pred_mask = tf.cast((airway_pred>0.01),tf.float32)
         artery_pred_mask = tf.cast((artery_pred>0.01),tf.float32)
 
         # labels
         lung_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
-        airway_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
+        # airway_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         artery_lable = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
 
         # accuracy
         lung_acc = 2*tf.reduce_sum(lung_lable*lung_pred_mask)/(tf.reduce_sum(lung_lable+lung_pred_mask)+1e-6)
         tf.summary.scalar('lung_acc', lung_acc)
-        airway_acc = 2*tf.reduce_sum(airway_lable*airway_pred_mask)/(tf.reduce_sum(airway_lable+airway_pred_mask)+1e-6)
-        tf.summary.scalar('airway_acc', airway_acc)
+        # airway_acc = 2*tf.reduce_sum(airway_lable*airway_pred_mask)/(tf.reduce_sum(airway_lable+airway_pred_mask)+1e-6)
+        # tf.summary.scalar('airway_acc', airway_acc)
         artery_acc = 2*tf.reduce_sum(artery_lable*artery_pred_mask)/(tf.reduce_sum(artery_lable+artery_pred_mask)+1e-6)
         tf.summary.scalar('artery_acc', artery_acc)
 
         # loss function
         w_fore_lung = flags.lung_fore_weight
-        w_fore_airway = flags.airway_fore_weight
+        # w_fore_airway = flags.airway_fore_weight
         w_fore_artery = flags.artery_fore_weight
 
         # lung loss
@@ -254,9 +254,9 @@ class Network():
         # mask_mean_lung = tf.reduce_mean((1-lung_lable))
 
         #  airway loss
-        airway_loss = flags.airway_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_airway*airway_lable*tf.log(airway_pred + 1e-8),reduction_indices=[1]) -
-                                                       tf.reduce_mean((1-w_fore_airway)*(1-airway_lable)*tf.log(1-airway_pred + 1e-8),reduction_indices=[1]))
-        tf.summary.scalar('airway_loss', airway_loss)
+        # airway_loss = flags.airway_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_airway*airway_lable*tf.log(airway_pred + 1e-8),reduction_indices=[1]) -
+        #                                                tf.reduce_mean((1-w_fore_airway)*(1-airway_lable)*tf.log(1-airway_pred + 1e-8),reduction_indices=[1]))
+        # tf.summary.scalar('airway_loss', airway_loss)
         # predict_mean_airway = tf.reduce_mean(tf.log(1-airway_pred + 1e-8),reduction_indices=[1])
         # mask_mean_airway = tf.reduce_mean((1 - airway_lable))
 
@@ -268,12 +268,12 @@ class Network():
         # mask_mean_artery = tf.reduce_mean((1 - artery_lable))
 
         # total loss
-        total_loss = lung_loss+airway_loss+artery_loss
+        total_loss = lung_loss+artery_loss
         tf.summary.scalar('total_loss',total_loss)
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 21700/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 23599/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
@@ -347,40 +347,40 @@ class Network():
             try:
                 for i in range(flags.max_iteration_num):
                     # organize a batch of data for training
-                    airway_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+                    # airway_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
                     artery_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
                     lung_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
                     original_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
 
                     # store values into data block
                     for m in range(flags.batch_size_train):
-                        airway_data, artery_data, lung_data, original_data = \
-                            sess.run([airway_block, artery_block, lung_block, original_block])
-                        airway_np[m, :, :, :] += airway_data
+                        artery_data, lung_data, original_data = \
+                            sess.run([artery_block, lung_block, original_block])
+                        # airway_np[m, :, :, :] += airway_data
                         artery_np[m, :, :, :] += artery_data
                         lung_np[m, :, :, :] += lung_data
                         original_np[m, :, :, :] += original_data
 
                     train__, step_num = sess.run([train_op, global_step],
-                                                 feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
+                                                 feed_dict={X: original_np, lung_lable: lung_np,
                                                             artery_lable: artery_np, training: True})
 
                     if i%10==0:
-                        sum_train, accuracy_airway, accuracy_artery, accuracy_lung, \
-                        airway_l_val, artery_l_val, lung_l_val, total_l_val \
-                            = sess.run([merge_summary_op, airway_acc, artery_acc, lung_acc,
-                                        airway_loss, artery_loss, lung_loss, total_loss],
-                                       feed_dict={X: original_np, lung_lable: lung_np, airway_lable: airway_np,
+                        sum_train, accuracy_artery, accuracy_lung, \
+                        artery_l_val, lung_l_val, total_l_val \
+                            = sess.run([merge_summary_op, artery_acc, lung_acc,
+                                        artery_loss, lung_loss, total_loss],
+                                       feed_dict={X: original_np, lung_lable: lung_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================" \
-                              % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
-                                 , accuracy_lung, accuracy_airway, accuracy_artery)
+                        print "train :\nstep %d , lung loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , artery accuracy = %f\n=====================" \
+                              % (int(step_num), lung_l_val, artery_l_val, total_l_val
+                                 , accuracy_lung, accuracy_artery)
 
                     if i%test_step ==0 and i>0:
                         # block testing part
-                        airway_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
-                                             np.int16)
+                        # airway_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
+                        #                      np.int16)
                         artery_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                              np.int16)
                         lung_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]], np.int16)
@@ -389,29 +389,29 @@ class Network():
 
                         # store values into data block
                         for m in range(flags.batch_size_train):
-                            airway_data_test, artery_data_test, lung_data_test, original_data_test = \
-                                sess.run([airway_block_test, artery_block_test, lung_block_test, original_block_test])
-                            airway_np_test[m, :, :, :] += airway_data_test
+                            artery_data_test, lung_data_test, original_data_test = \
+                                sess.run([artery_block_test, lung_block_test, original_block_test])
+                            # airway_np_test[m, :, :, :] += airway_data_test
                             artery_np_test[m, :, :, :] += artery_data_test
                             lung_np_test[m, :, :, :] += lung_data_test
                             original_np_test[m, :, :, :] += original_data_test
 
-                        sum_test, accuracy_airway, accuracy_artery, accuracy_lung, \
-                        airway_l_val, artery_l_val, lung_l_val, total_l_val, \
-                        airway_np_pred,artery_np_pred,airway_np_sig,artery_np_sig\
-                            = sess.run([merge_summary_op, airway_acc, artery_acc, lung_acc,
-                                        airway_loss, artery_loss, lung_loss, total_loss,
-                                        airway_pred, artery_pred,airway_sig,artery_sig],
-                                       feed_dict={X: original_np_test, lung_lable: lung_np_test, airway_lable: airway_np_test,
+                        sum_test, accuracy_artery, accuracy_lung, \
+                        artery_l_val, lung_l_val, total_l_val, \
+                        artery_np_pred,artery_np_sig\
+                            = sess.run([merge_summary_op, artery_acc, lung_acc,
+                                        artery_loss, lung_loss, total_loss,
+                                        artery_pred,artery_sig],
+                                       feed_dict={X: original_np_test, lung_lable: lung_np_test,
                                                   artery_lable: artery_np_test, training: False})
 
                         summary_writer_test.add_summary(sum_test, global_step=int(step_num))
-                        print "\ntest :\nstep %d , lung loss = %f airway loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , airway accuracy = %f , artery accuracy = %f\n=====================" \
-                              % (int(step_num), lung_l_val, airway_l_val, artery_l_val, total_l_val
-                                 , accuracy_lung, accuracy_airway, accuracy_artery)
-                        print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
+                        print "\ntest :\nstep %d , lung loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , artery accuracy = %f\n=====================" \
+                              % (int(step_num), lung_l_val, artery_l_val, total_l_val
+                                 , accuracy_lung, accuracy_artery)
+                        # print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         print "artery percentage : ",str(np.float32(np.sum(np.float32(artery_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
-                        print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
+                        # print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
                         print "prediction of artery : maximum = ",np.max(artery_np_sig)," minimum = ",np.min(artery_np_sig),'\n'
                         # print 'airway_log_mean = ',airway_log_mean,' airway_mask_mean = ',airway_mask_mean
                         # print 'lung_log_mean = ',lung_log_mean,' lung_mask_mean = ',lung_mask_mean
@@ -513,8 +513,8 @@ class Network():
 if __name__ == "__main__":
     test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
-    # net.check_net()
-    net.train()
+    net.check_net()
+    # net.train()
     # time1 = time.time()
     # net.test(test_dicom_dir)
     # time2 = time.time()
