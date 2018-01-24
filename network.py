@@ -14,7 +14,7 @@ import sys
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 class Network():
     def __init__(self):
@@ -105,8 +105,8 @@ class Network():
             return modified_segment,segment_sigmoid
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
-        original_down = 24
-        growth_down = 4
+        original_down = 16
+        growth_down = 6
         depth_down = 2
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
@@ -139,8 +139,8 @@ class Network():
 
     # artery branch only network
     def Dense_Net_Test(self,inputs,training,batch_size,threshold):
-        original_down = 24
-        growth_down = 4
+        original_down = 16
+        growth_down = 6
         depth_down = 2
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
