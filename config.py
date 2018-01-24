@@ -6,12 +6,12 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_string(
-    'record_dir',"/opt/Multi-Task-data-process/records_48/",
+    'record_dir',"/opt/Multi-Task-data-process/records_64/",
     'Directory where tfrecord files will be stored'
 )
 
 tf.app.flags.DEFINE_string(
-    'record_test_dir','/opt/Multi-Task-data-process/records_test_48/',
+    'record_test_dir','/opt/Multi-Task-data-process/records_test_64/',
     'Directory where test data stored'
 )
 

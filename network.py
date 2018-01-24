@@ -273,7 +273,7 @@ class Network():
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 23599/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 21700/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
