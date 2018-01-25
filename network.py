@@ -490,9 +490,10 @@ class Network():
         data_type = "dicom_data"
         X = tf.placeholder(dtype=tf.float32, shape=[batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
         training = tf.placeholder(tf.bool)
-        artery_pred, artery_sig = self.Dense_Net_Test(X, training,
-                                                      flags.batch_size_test,
-                                                      flags.accept_threshold)
+        with tf.variable_scope('generator'):
+            artery_pred, artery_sig = self.Dense_Net_Test(X, training,
+                                                          flags.batch_size_test,
+                                                          flags.accept_threshold)
         artery_pred = tf.reshape(artery_pred, [batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
 
         # binary predict mask
