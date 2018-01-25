@@ -288,7 +288,7 @@ class Network():
         artery_pred_ = tf.reshape(artery_pred,shape=[batch_size_train,-1])
         airway_loss = flags.airway_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_airway*airway_lable_*tf.log(airway_pred_ + 1e-8),reduction_indices=[1]) -
                                                        tf.reduce_mean((1-w_fore_airway)*(1-airway_lable_)*tf.log(1-airway_pred_ + 1e-8),reduction_indices=[1]))
-        # tf.summary.scalar('lung_loss_cross_entropy', lung_loss)
+        tf.summary.scalar('airway_loss_cross_entropy', airway_loss)
         # predict_mean_lung = tf.reduce_mean(tf.log(1-lung_pred + 1e-8),reduction_indices=[1])
         # mask_mean_lung = tf.reduce_mean((1-lung_lable))
         # artery loss
@@ -299,7 +299,7 @@ class Network():
         # mask_mean_artery = tf.reduce_mean((1 - artery_lable))
 
         # generator cross entropy loss
-        ge_loss = artery_loss
+        ge_loss =airway_loss + artery_loss
         tf.summary.scalar('generator_cross_entropy_loss',ge_loss)
 
         # discriminator and gan loss
