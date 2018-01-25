@@ -288,7 +288,7 @@ class Network():
         artery_pred_ = tf.reshape(artery_pred,shape=[batch_size_train,-1])
         lung_loss = flags.lung_weight*tf.reduce_mean( -tf.reduce_mean(w_fore_lung*lung_lable_*tf.log(lung_pred_ + 1e-8),reduction_indices=[1]) -
                                                        tf.reduce_mean((1-w_fore_lung)*(1-lung_lable_)*tf.log(1-lung_pred_ + 1e-8),reduction_indices=[1]))
-        tf.summary.scalar('lung_loss_cross_entropy', lung_loss)
+        # tf.summary.scalar('lung_loss_cross_entropy', lung_loss)
         # predict_mean_lung = tf.reduce_mean(tf.log(1-lung_pred + 1e-8),reduction_indices=[1])
         # mask_mean_lung = tf.reduce_mean((1-lung_lable))
         # artery loss
@@ -299,7 +299,7 @@ class Network():
         # mask_mean_artery = tf.reduce_mean((1 - artery_lable))
 
         # generator cross entropy loss
-        ge_loss = lung_loss+artery_loss
+        ge_loss = artery_loss
         tf.summary.scalar('generator_cross_entropy_loss',ge_loss)
 
         # discriminator and gan loss
@@ -423,14 +423,14 @@ class Network():
 
                     if i%10==0:
                         sum_train, accuracy_artery, accuracy_lung, \
-                        artery_l_val, lung_l_val, total_l_val,total_l_dis \
+                        artery_l_val, total_l_val,total_l_dis \
                             = sess.run([merge_summary_op, artery_acc, lung_acc,
-                                        artery_loss, lung_loss, total_g_loss,gan_d_loss],
+                                        artery_loss, total_g_loss,gan_d_loss],
                                        feed_dict={X: original_np, lung_lable: lung_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , lung loss = %f artery loss = %f total generator loss = %f total discriminator = %f \n\t\t\tlung accuracy = %f , artery accuracy = %f\n =====================" \
-                              % (int(step_num), lung_l_val, artery_l_val, total_l_val,total_l_dis
+                        print "train :\nstep %d , artery loss = %f total generator loss = %f total discriminator loss= %f \n\t\t\tlung accuracy = %f , artery accuracy = %f\n =====================" \
+                              % (int(step_num), artery_l_val, total_l_val,total_l_dis
                                  , accuracy_lung, accuracy_artery)
 
                     if i%test_step ==0 and i>0:
@@ -453,17 +453,17 @@ class Network():
                             original_np_test[m, :, :, :] += original_data_test
 
                         sum_test, accuracy_artery, accuracy_lung, \
-                        artery_l_val, lung_l_val, total_l_val, \
+                        artery_l_val, total_l_val, \
                         artery_np_pred,artery_np_sig\
                             = sess.run([merge_summary_op, artery_acc, lung_acc,
-                                        artery_loss, lung_loss, total_g_loss,
+                                        artery_loss, total_g_loss,
                                         artery_pred,artery_sig],
                                        feed_dict={X: original_np_test, lung_lable: lung_np_test,
                                                   artery_lable: artery_np_test, training: False})
 
                         summary_writer_test.add_summary(sum_test, global_step=int(step_num))
-                        print "\ntest :\nstep %d , lung loss = %f artery loss = %f total loss = %f \n\t\tlung accuracy = %f , artery accuracy = %f\n=====================" \
-                              % (int(step_num), lung_l_val, artery_l_val, total_l_val
+                        print "\ntest :\nstep %d , artery loss = %f total loss = %f \n\t\tlung accuracy = %f , artery accuracy = %f\n=====================" \
+                              % (int(step_num), artery_l_val, total_l_val
                                  , accuracy_lung, accuracy_artery)
                         # print "airway percentage : ",str(np.float32(np.sum(np.float32(airway_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
                         print "artery percentage : ",str(np.float32(np.sum(np.float32(artery_np_test))/(flags.batch_size_train*block_shape[0]*block_shape[1]*block_shape[2])))
