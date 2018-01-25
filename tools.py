@@ -48,8 +48,8 @@ class Test_data():
         # img_unseged = ST.GetImageFromArray(np.transpose(img_array,[2,1,0]))
         # ST.WriteImage(img_unseged,'./test_result/img_unseged.vtk')
         print 'data shape: ', original_shape
-        for i in range(0,original_shape[0],self.block_shape[0]):
-            for j in range(0,original_shape[1],self.block_shape[1]):
+        for i in range(0,original_shape[0],48):
+            for j in range(0,original_shape[1],48):
                 for k in range(0,original_shape[2],self.block_shape[2]/2):
                     if i<original_shape[0] and j<original_shape[1] and k<original_shape[2]:
                         block_array = img_array[i:i+self.block_shape[0],j:j+self.block_shape[1],k:k+self.block_shape[2]]
