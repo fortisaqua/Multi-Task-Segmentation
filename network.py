@@ -558,7 +558,7 @@ class Network():
                                                                                      0:r_s[2] - e_t]
             print "maximum value in mask: ", np.max(to_be_transformed)
             print "minimum value in mask: ", np.min(to_be_transformed)
-            final_img = ST.GetImageFromArray(np.transpose(np.int8(to_be_transformed), [2, 1, 0]))
+            final_img = ST.GetImageFromArray(np.transpose(to_be_transformed, [2, 1, 0]))
             final_img.SetSpacing(test_data.space)
             time4 = time.time()
             print "post processing time consume : ",str(time4-time3)

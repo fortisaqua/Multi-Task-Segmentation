@@ -24,12 +24,12 @@ tf.app.flags.DEFINE_integer(
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',64,
+    'block_shape_3',128,
     'shape of single data block'
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_train',2,
+    'batch_size_train',1,
     'batch size for training'
 )
 
