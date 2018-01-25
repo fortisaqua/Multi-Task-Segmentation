@@ -421,7 +421,7 @@ class Network():
                                                  feed_dict={X: original_np, airway_lable: airway_np,
                                                             artery_lable: artery_np, training: True})
 
-                    if i%10==0:
+                    if step_num%10==0:
                         sum_train, accuracy_artery, accuracy_airway, \
                         artery_l_val, total_l_val,total_l_dis \
                             = sess.run([merge_summary_op, artery_acc, airway_acc,
@@ -429,11 +429,11 @@ class Network():
                                        feed_dict={X: original_np, airway_lable: airway_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
-                        print "train :\nstep %d , artery loss = %f total generator loss = %f total discriminator loss= %f \n\t\t\tlung accuracy = %f , artery accuracy = %f\n =====================" \
+                        print "train :\nstep %d , artery loss = %f total generator loss = %f total discriminator loss= %f \n\t\t\tairway accuracy = %f , artery accuracy = %f\n =====================" \
                               % (int(step_num), artery_l_val, total_l_val,total_l_dis
                                  , accuracy_airway, accuracy_artery)
 
-                    if i%test_step ==0 and i>0:
+                    if step_num%test_step ==0 and i>0:
                         # block testing part
                         airway_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                              np.int16)
