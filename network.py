@@ -162,12 +162,12 @@ class Network():
             # dense block 3
             dense_block_output_3 = self.dense_block(down_sample_2,growth_down,depth_down,'dense_block_3',training,scope='dense_block_3')
 
-        # artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
-        #                                  name='artery', training=training, threshold=threshold)
+        artery_predict,artery_sigmoid = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
+                                         name='artery', training=training, threshold=threshold)
 
-        lung_predict,lung_sigmoid = self.Segment_part(dense_block_output_3,dense_block_input_1,down_sample_1,down_sample_2,name='lung',training=training,threshold=threshold)
+        # lung_predict,lung_sigmoid = self.Segment_part(dense_block_output_3,dense_block_input_1,down_sample_1,down_sample_2,name='lung',training=training,threshold=threshold)
 
-        return lung_predict,lung_sigmoid
+        return artery_predict,artery_sigmoid
 
     def Dis(self, X, Y,training,batch_size):
         casted_inputs_X = tf.cast(X, tf.float32)
