@@ -44,8 +44,8 @@ class Test_data():
     def organize_blocks(self):
         block_num=0
         original_shape=np.shape(self.image_array)
-        # img_array = self.image_array*np.float32(self.image_array>=200)
-        img_array = self.image_array
+        img_array = self.image_array*np.float32(self.image_array>=300)
+        # img_array = self.image_array
         img_unseged = ST.GetImageFromArray(np.transpose(img_array,[2,1,0]))
         ST.WriteImage(img_unseged,'./test_result/img_unseged.vtk')
         print 'data shape: ', original_shape
