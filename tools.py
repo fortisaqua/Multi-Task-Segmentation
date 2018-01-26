@@ -46,8 +46,8 @@ class Test_data():
         original_shape=np.shape(self.image_array)
         # img_array = self.image_array*np.float32(self.image_array>=200)
         img_array = self.image_array
-        # img_unseged = ST.GetImageFromArray(np.transpose(img_array,[2,1,0]))
-        # ST.WriteImage(img_unseged,'./test_result/img_unseged.vtk')
+        img_unseged = ST.GetImageFromArray(np.transpose(img_array,[2,1,0]))
+        ST.WriteImage(img_unseged,'./test_result/img_unseged.vtk')
         print 'data shape: ', original_shape
         for i in range(0,original_shape[0],48):
             for j in range(0,original_shape[1],48):
