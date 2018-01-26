@@ -421,7 +421,7 @@ class Network():
                                                  feed_dict={X: original_np, airway_lable: airway_np,
                                                             artery_lable: artery_np, training: True})
 
-                    if step_num%10==0:
+                    if i%10==0:
                         sum_train, accuracy_artery, accuracy_airway, \
                         artery_l_val, total_l_val,total_l_dis \
                             = sess.run([merge_summary_op, artery_acc, airway_acc,
@@ -433,7 +433,7 @@ class Network():
                               % (int(step_num), artery_l_val, total_l_val,total_l_dis
                                  , accuracy_airway, accuracy_artery)
 
-                    if step_num%test_step ==0 and i>0:
+                    if i%test_step ==0 and i>0:
                         # block testing part
                         airway_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
                                              np.int16)
@@ -474,7 +474,7 @@ class Network():
                         # print 'artery_log_mean = ',artery_log_mean,' artery_mask_mean = ',artery_mask_mean
                     if i%100 ==0:
                         saver.save(sess,self.train_models_dir+"train_models.ckpt")
-                        print "regular model saved!"
+                        print "regular model saved! step count : ",step_num
             except Exception,e:
                 print e
                 # exit(2)
