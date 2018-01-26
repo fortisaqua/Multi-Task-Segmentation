@@ -85,7 +85,7 @@ class Test_data():
             except Exception,e:
                 # print e
                 print np.shape(self.results[number].load_data()[:,:,:]),self.results[number].get_range()
-        return np.float32(ret>=2)
+        return np.float32(ret)
 
 class Ops:
 
