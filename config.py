@@ -44,7 +44,7 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'test_step',20,
+    'test_step',100,
     'steps period that will do testing'
 )
 
