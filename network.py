@@ -418,7 +418,7 @@ class Network():
                         original_np[m, :, :, :] += original_data
 
                     train_ge_, train_dis_,step_num = sess.run([ge_train_op,dis_train_op, global_step],
-                                                 feed_dict={X: original_np, airway_lable: airway_np,
+                                                 feed_dict={X: original_np, airway_lable: artery_np,
                                                             artery_lable: artery_np, training: True})
 
                     if i%10==0:
@@ -426,7 +426,7 @@ class Network():
                         artery_l_val, total_l_val,total_l_dis \
                             = sess.run([merge_summary_op, artery_acc, airway_acc,
                                         artery_loss, total_g_loss,gan_d_loss],
-                                       feed_dict={X: original_np, airway_lable: airway_np,
+                                       feed_dict={X: original_np, airway_lable: artery_np,
                                                                 artery_lable: artery_np, training: False})
                         summary_writer_train.add_summary(sum_train,global_step=int(step_num))
                         print "train :\nstep %d , artery loss = %f total generator loss = %f total discriminator loss= %f \n\t\t\tairway accuracy = %f , artery accuracy = %f\n =====================" \
@@ -458,7 +458,7 @@ class Network():
                             = sess.run([merge_summary_op, artery_acc, airway_acc,
                                         artery_loss, total_g_loss,
                                         artery_pred,artery_sig],
-                                       feed_dict={X: original_np_test, airway_lable: airway_np_test,
+                                       feed_dict={X: original_np_test, airway_lable: artery_np_test,
                                                   artery_lable: artery_np_test, training: False})
 
                         summary_writer_test.add_summary(sum_test, global_step=int(step_num))
