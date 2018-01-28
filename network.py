@@ -48,14 +48,14 @@ class Network():
             # layer = tools.Ops.xxlu(layer, name=block_name + 'relu' + str(i))
             layer = tools.Ops.conv3d(layer, k=3, out_c=growth, str=1, name=block_name + '_layer_' + str(i))
             temp_shape = layers[-1].get_shape()
-            next_input = tf.concat([layer, tools.Ops.conv3d(layers[-1],k=1,out_c=int(temp_shape[-1]),str=1,name=scope+"_down_sprading_"+str(i))], axis=4)
+            next_input = tf.concat([layer, layers[-1]], axis=4)
             layers.append(next_input)
         return tools.Ops.xxlu(tools.Ops.batch_norm(layers[-1], name_scope=scope+'_bn_output', training=training))
 
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
         growth_down = 12
-        depth_down = 6
+        depth_down = 10
 
         # if 'lung' in name:
         #     growth_up = 6
@@ -327,7 +327,7 @@ class Network():
 
         # set training step and learning rate into tensors to save
         global_step = tf.Variable(0, trainable=False)
-        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 15000/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
+        learning_rate = tf.maximum(tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 27000/flags.batch_size_train,LEARNING_RATE_DECAY, staircase=True), 1e-9)
 
         # merge operation for tensorboard summary
         merge_summary_op = tf.summary.merge_all()
