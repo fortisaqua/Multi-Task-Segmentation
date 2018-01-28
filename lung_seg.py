@@ -7,7 +7,7 @@ import numpy as np
 import time
 import test
 import SimpleITK as ST
-from dicom_read import read_dicoms
+from util import read_dicoms
 import gc
 
 resolution = 64

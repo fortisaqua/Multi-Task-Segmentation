@@ -11,6 +11,7 @@ import gc
 import SimpleITK as ST
 import time
 import sys
+import lung_seg
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -488,7 +489,7 @@ class Network():
         flags = self.FLAGS
         block_shape = self.block_shape
         batch_size_test = self.batch_size_test
-        data_type = "dicom_data"
+        data_type = "vtk_data"
         X = tf.placeholder(dtype=tf.float32, shape=[batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
         training = tf.placeholder(tf.bool)
         with tf.variable_scope('generator'):
@@ -512,8 +513,8 @@ class Network():
             else:
                 print "no model detected from %s"%(self.train_models_dir)
                 exit(1)
-
-            test_data = tools.Test_data(dicom_dir, block_shape,data_type)
+            lung_part = lung_seg.Lung_Seg(dicom_dir)
+            test_data = tools.Test_data(lung_part, block_shape,data_type)
             test_data.organize_blocks()
             block_numbers = test_data.blocks.keys()
             blocks_num = len(block_numbers)
