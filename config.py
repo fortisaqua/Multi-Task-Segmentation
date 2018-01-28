@@ -84,7 +84,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'artery_fore_weight',0.6,
+    'artery_fore_weight',0.8,
     'foreground weight for lost function of artery part'
 )
 
@@ -104,7 +104,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_base',0.0005,
+    'training_rate_base',0.001,
     'original learning rate'
 )
 
