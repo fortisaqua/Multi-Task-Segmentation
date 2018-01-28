@@ -493,7 +493,7 @@ class Network():
         with tf.variable_scope('generator'):
             artery_pred, artery_sig = self.Dense_Net_Test(X, training,
                                                           flags.batch_size_test,
-                                                          flags.accept_threshold)
+                                                          flags.accept_threshold+0.1)
         artery_pred = tf.reshape(artery_pred, [batch_size_test, block_shape[0], block_shape[1], block_shape[2]])
 
         # binary predict mask
@@ -571,7 +571,7 @@ if __name__ == "__main__":
     test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
     # net.check_net()
-    net.train()
+    # net.train()
     time1 = time.time()
     net.test(test_dicom_dir)
     time2 = time.time()
