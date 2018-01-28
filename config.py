@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_integer(
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',128,
+    'block_shape_3',64,
     'shape of single data block'
 )
 
