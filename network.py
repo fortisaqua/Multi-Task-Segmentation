@@ -56,7 +56,7 @@ class Network():
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
         growth_down = 12
-        depth_down = 10
+        depth_down = 6
 
         # if 'lung' in name:
         #     growth_up = 6
@@ -92,10 +92,10 @@ class Network():
             up_bn_2 = tools.Ops.batch_norm(up_sample_2,name_scope='up_bn_2',training=training)
             segment_input = tf.concat([up_bn_2,input_1],axis=4,name='segment_input')
             # segment conv 1
-            segment_conv_1 = tools.Ops.conv3d(segment_input,k=3,
+            segment_conv_1 = tools.Ops.conv3d(segment_input,k=1,
                                               out_c=original_down+1*(growth_down*depth_down),str=1,name='segment_conv_1')
             # segment conv 2
-            segment_conv_2 = tools.Ops.conv3d(segment_conv_1,k=3,out_c=64,str=1,name='segment_conv_2')
+            segment_conv_2 = tools.Ops.conv3d(segment_conv_1,k=1,out_c=64,str=1,name='segment_conv_2')
             # segment input
             segment_input = tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_input',training=training)
             # segment predict
@@ -110,7 +110,7 @@ class Network():
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
         growth_down = 12
-        depth_down = 10
+        depth_down = 6
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 

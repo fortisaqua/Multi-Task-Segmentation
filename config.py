@@ -84,7 +84,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'artery_fore_weight',0.8,
+    'artery_fore_weight',0.85,
     'foreground weight for lost function of artery part'
 )
 
@@ -99,12 +99,12 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'accept_threshold',0.8,
+    'accept_threshold',0.5,
     'threshold for judging if the corresponding pixel can be classfied as foreground'
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_base',0.1,
+    'training_rate_base',0.01,
     'original learning rate'
 )
 
