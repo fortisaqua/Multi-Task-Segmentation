@@ -94,7 +94,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'lung_fore_weight',0.7,
+    'lung_fore_weight',0.8,
     'foreground weight for lost function of lung part'
 )
 
@@ -104,7 +104,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'training_rate_base',0.001,
+    'training_rate_base',0.1,
     'original learning rate'
 )
 
