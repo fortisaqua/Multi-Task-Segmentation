@@ -46,7 +46,7 @@ class Network():
             return X
         for i in range(depth):
             layer = tools.Ops.batch_norm(layers[-1], name_scope=scope+'_bn_'+str(i), training=training)
-            # layer = tools.Ops.xxlu(layer, name=block_name + 'relu' + str(i))
+            layer = tools.Ops.xxlu(layer, name=block_name + 'relu' + str(i))
             layer = tools.Ops.conv3d(layer, k=3, out_c=growth, str=1, name=block_name + '_layer_' + str(i))
             temp_shape = layers[-1].get_shape()
             next_input = tf.concat([layer, layers[-1]], axis=4)
@@ -55,7 +55,7 @@ class Network():
 
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
-        growth_down = 12
+        growth_down = 6
         depth_down = 6
 
         # if 'lung' in name:
@@ -73,7 +73,7 @@ class Network():
             up_sample_input_1 = tf.concat([inputs,down_2],axis=4,name='up_sample_input_1')
             # up sample 1
             up_sample_1 = tools.Ops.deconv3d(up_sample_input_1,k=2,
-                                             out_c=original_down+1*(growth_down*depth_down),str=2,name='up_sample_1')
+                                             out_c=original_down+3*(growth_down*depth_down),str=2,name='up_sample_1')
 
             up_bn_1 = tools.Ops.batch_norm(up_sample_1,name_scope='up_bn_1',training=training)
             # dense block 4
@@ -83,7 +83,7 @@ class Network():
             up_sample_input_2 = tf.concat([up_bn_1,down_1],axis=4,name='up_sample_input_2')
             # up sample 2
             up_sample_2 = tools.Ops.deconv3d(up_sample_input_2,k=2,
-                                             out_c=original_down+1*(growth_down*depth_down),str=2,name='up_sample_2')
+                                             out_c=original_down+2*(growth_down*depth_down),str=2,name='up_sample_2')
 
             # dense block 5
             # dense_block_output_5 = self.dense_block(up_sample_2,growth_up,depth_up,'dense_block_5',training,scope='dense_block_5')
@@ -95,9 +95,11 @@ class Network():
             segment_conv_1 = tools.Ops.conv3d(segment_input,k=1,
                                               out_c=original_down+1*(growth_down*depth_down),str=1,name='segment_conv_1')
             # segment conv 2
-            segment_conv_2 = tools.Ops.conv3d(segment_conv_1,k=1,out_c=64,str=1,name='segment_conv_2')
+            segment_bn_1 = tools.Ops.batch_norm(segment_conv_1,name_scope='bn_segment_1',training=training)
+            relu_1 = tools.Ops.xxlu(segment_bn_1,name='relu_segment_1')
+            segment_conv_2 = tools.Ops.conv3d(relu_1,k=1,out_c=32,str=1,name='segment_conv_2')
             # segment input
-            segment_input = tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_input',training=training)
+            segment_input = tools.Ops.xxlu(tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_2',training=training),name='relu_segment_2')
             # segment predict
             segment_predict = tools.Ops.conv3d(segment_input,k=1,out_c=1,str=1,name='segment_predict')
 
@@ -109,7 +111,7 @@ class Network():
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
-        growth_down = 12
+        growth_down = 6
         depth_down = 6
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
@@ -143,8 +145,8 @@ class Network():
     # artery branch only network
     def Dense_Net_Test(self,inputs,training,batch_size,threshold):
         original_down = 16
-        growth_down = 12
-        depth_down = 10
+        growth_down = 6
+        depth_down = 6
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
@@ -180,7 +182,7 @@ class Network():
         Y_input = tf.reshape(casted_inputs_Y, [batch_size, self.block_shape[0], self.block_shape[1], self.block_shape[2], 1],
                        name='input_dis_Y')
         layer = tf.concat([X_input,Y_input],axis=4)
-        c_d = [1,2,32,63,128,256]
+        c_d = [1,2,64,128,256,512]
         s_d = [0,2,2,2,2,2]
         layers_d =[]
         layers_d.append(layer)
