@@ -574,9 +574,9 @@ class Network():
 if __name__ == "__main__":
     test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
-    net.check_net()
-    # net.train()
-    # time1 = time.time()
-    # net.test(test_dicom_dir)
-    # time2 = time.time()
-    # print "total time consume ",str(time2-time1)
+    # net.check_net()
+    net.train()
+    time1 = time.time()
+    net.test(test_dicom_dir)
+    time2 = time.time()
+    print "total time consume ",str(time2-time1)
