@@ -15,7 +15,7 @@ import lung_seg
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class Network():
     def __init__(self):
@@ -46,7 +46,7 @@ class Network():
             return X
         for i in range(depth):
             layer = tools.Ops.batch_norm(layers[-1], name_scope=scope+'_bn_'+str(i), training=training)
-            layer = tools.Ops.xxlu(layer, name=block_name + 'relu' + str(i))
+            layer = tools.Ops.xxlu(layer, name='lrelu')
             layer = tools.Ops.conv3d(layer, k=3, out_c=growth, str=1, name=block_name + '_layer_' + str(i))
             temp_shape = layers[-1].get_shape()
             next_input = tf.concat([layer, layers[-1]], axis=4)
@@ -96,10 +96,10 @@ class Network():
                                               out_c=original_down+1*(growth_down*depth_down),str=1,name='segment_conv_1')
             # segment conv 2
             segment_bn_1 = tools.Ops.batch_norm(segment_conv_1,name_scope='bn_segment_1',training=training)
-            relu_1 = tools.Ops.xxlu(segment_bn_1,name='relu_segment_1')
+            relu_1 = tools.Ops.xxlu(segment_bn_1,name='lrelu')
             segment_conv_2 = tools.Ops.conv3d(relu_1,k=1,out_c=32,str=1,name='segment_conv_2')
             # segment input
-            segment_input = tools.Ops.xxlu(tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_2',training=training),name='relu_segment_2')
+            segment_input = tools.Ops.xxlu(tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_2',training=training),name='lrelu')
             # segment predict
             segment_predict = tools.Ops.conv3d(segment_input,k=1,out_c=1,str=1,name='segment_predict')
 
@@ -574,9 +574,9 @@ class Network():
 if __name__ == "__main__":
     test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/ZHANG_YU_KUN/original1'
     net = Network()
-    # net.check_net()
-    net.train()
-    time1 = time.time()
-    net.test(test_dicom_dir)
-    time2 = time.time()
-    print "total time consume ",str(time2-time1)
+    net.check_net()
+    # net.train()
+    # time1 = time.time()
+    # net.test(test_dicom_dir)
+    # time2 = time.time()
+    # print "total time consume ",str(time2-time1)
