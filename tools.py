@@ -44,8 +44,8 @@ class Test_data():
     def organize_blocks(self):
         block_num=0
         original_shape=np.shape(self.image_array)
-        img_array = self.image_array*np.float32(self.image_array>=300)
-        # img_array = self.image_array
+        # img_array = self.image_array*np.float32(self.image_array>=300)
+        img_array = self.image_array
         img_unseged = ST.GetImageFromArray(np.transpose(img_array,[2,1,0]))
         ST.WriteImage(img_unseged,'./test_result/img_unseged.vtk')
         print 'data shape: ', original_shape
@@ -54,11 +54,21 @@ class Test_data():
                 for k in range(0,original_shape[2],self.block_shape[2]/2):
                     if i<original_shape[0] and j<original_shape[1] and k<original_shape[2]:
                         block_array = img_array[i:i+self.block_shape[0],j:j+self.block_shape[1],k:k+self.block_shape[2]]
-                        block_shape = np.shape(block_array)
-                        ranger=[i,i+block_shape[0],j,j+block_shape[1],k,k+block_shape[2]]
-                        this_block=Data_block(ranger,img_array[i:i+self.block_shape[0],j:j+self.block_shape[1],k:k+self.block_shape[2]])
-                        self.blocks[block_num]=this_block
-                        block_num+=1
+                        if type == 'vtk_data':
+                            if not np.max(block_array)==np.min(block_array)==0:
+                                block_shape = np.shape(block_array)
+                                ranger=[i,i+block_shape[0],j,j+block_shape[1],k,k+block_shape[2]]
+                                this_block=Data_block(ranger,img_array[i:i+self.block_shape[0],j:j+self.block_shape[1],k:k+self.block_shape[2]])
+                                self.blocks[block_num]=this_block
+                                block_num+=1
+                        else:
+                            block_shape = np.shape(block_array)
+                            ranger = [i, i + block_shape[0], j, j + block_shape[1], k, k + block_shape[2]]
+                            this_block = Data_block(ranger,
+                                                    img_array[i:i + self.block_shape[0], j:j + self.block_shape[1],
+                                                    k:k + self.block_shape[2]])
+                            self.blocks[block_num] = this_block
+                            block_num += 1
 
     def upload_result(self,block_num,result_array):
         ranger = self.blocks[block_num].get_range()
