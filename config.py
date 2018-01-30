@@ -29,12 +29,12 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_train',2,
+    'batch_size_train',1,
     'batch size for training'
 )
 
 tf.app.flags.DEFINE_integer(
-    'batch_size_test',8,
+    'batch_size_test',1,
     'batch size for testing'
 )
 
@@ -44,7 +44,12 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    'test_step',100,
+    'test_step',1000,
+    'steps period that will do testing'
+)
+
+tf.app.flags.DEFINE_integer(
+    'full_test_step',17500,
     'steps period that will do testing'
 )
 

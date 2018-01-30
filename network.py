@@ -15,7 +15,7 @@ import lung_seg
 
 FLAGS = tf.app.flags.FLAGS
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 class Network():
     def __init__(self):
@@ -175,7 +175,7 @@ class Network():
         weight_vec = tf.constant([flags.airway_weight,flags.artery_weight,flags.back_ground_weight],tf.float32)
         X = tf.placeholder(dtype=tf.float32,shape=[batch_size_train,block_shape[0],block_shape[1],block_shape[2]])
         training = tf.placeholder(tf.bool)
-        with tf.variable_scope('generator'):
+        with tf.variable_scope('network'):
             seg_pred = self.Dense_Net(X,training,flags.batch_size_train,flags.accept_threshold)
 
         # lost function
@@ -190,11 +190,13 @@ class Network():
         tf.summary.scalar('loss', loss)
 
         # accuracy
-        artery_pred_mask = tf.cast((seg_pred[:, :, :, :, 1]>threashold),tf.int16)
-        artery_lable = tf.cast(lables[:, :, :, :, 1],tf.int16)
+        pred_map = tf.argmax(seg_pred,axis=-1)
+        pred_map_bool = tf.equal(pred_map,1)
+        artery_pred_mask = tf.cast(pred_map_bool,tf.float32)
+        artery_lable = tf.cast(lables[:, :, :, :, 1],tf.float32)
         artery_acc = 2 * tf.reduce_sum(artery_lable * artery_pred_mask) / (
-                tf.reduce_sum(artery_lable + artery_pred_mask) + 1e-6)
-        tf.summary.scalar('artery_acc', artery_acc)
+                tf.reduce_sum(artery_lable + artery_pred_mask))
+        tf.summary.scalar('artery_block_acc', artery_acc)
 
         # data part
         records = ut.get_records(record_dir)
@@ -268,90 +270,158 @@ class Network():
 
             # main train loop
             # for i in range(flags.max_iteration_num):
-            try:
-                for i in range(flags.max_iteration_num):
-                    # organize a batch of data for training
-                    lable_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2],3], np.int16)
-                    original_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
+            for i in range(flags.max_iteration_num):
+                # organize a batch of data for training
+                lable_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2],3], np.int16)
+                original_np = np.zeros([batch_size_train,block_shape[0],block_shape[1],block_shape[2]], np.int16)
 
-                    # store values into data block
+                # store values into data block
+                for m in range(flags.batch_size_train):
+                    '''
+                    lable vector: [airway,artery,background]
+                    '''
+                    artery_data, airway_data, original_data = \
+                        sess.run([artery_block, airway_block, original_block])
+                    airway_array = airway_data
+                    artery_array = artery_data
+                    back_ground_array = np.int16((airway_array+artery_array)==0)
+                    check_array = airway_array+artery_array+back_ground_array
+                    while not np.max(check_array) == np.min(check_array) ==1:
+                        artery_data, airway_data, original_data = \
+                            sess.run([artery_block, airway_block, original_block])
+                        airway_array = airway_data
+                        artery_array = artery_data
+                        back_ground_array = np.int16((airway_array + artery_array) == 0)
+                        check_array = airway_array + artery_array + back_ground_array
+                    lable_np[m, :, :, :, 0] += airway_array
+                    lable_np[m, :, :, :, 1] += artery_array
+                    lable_np[m, :, :, :, 2] += back_ground_array
+                    original_np[m, :, :, :] += original_data
+                train_,step_num = sess.run([train_op, global_step],
+                                                           feed_dict={X: original_np,
+                                                                      lables: lable_np, training: True})
+                if step_num%flags.full_test_step==0:
+                #     full testing
+                    print "****************************full testing******************************"
+                    data_type = "dicom_data"
+                    test_dicom_dir = '/opt/Multi-Task-data-process/multi_task_data_test/FU_LI_JUN/original1'
+                    test_mask_dir = '/opt/Multi-Task-data-process/multi_task_data_test/FU_LI_JUN/artery'
+                    test_mask = ut.read_dicoms(test_mask_dir)
+                    test_mask_array = np.transpose(ST.GetArrayFromImage(test_mask),[2,1,0])
+                    test_data = tools.Test_data(test_dicom_dir, block_shape, data_type)
+                    test_data.organize_blocks()
+                    block_numbers = test_data.blocks.keys()
+                    blocks_num = len(block_numbers)
+                    print "block count: ", blocks_num
+                    time1 = time.time()
+                    sys.stdout.write("\r>>>deep learning calculating : %f" % (0.0) + "%")
+                    sys.stdout.flush()
+                    for m in range(0, blocks_num, batch_size_train):
+                        batch_numbers = []
+                        if m + batch_size_train < blocks_num:
+                            temp_batch_size = batch_size_train
+                        else:
+                            temp_batch_size = blocks_num - m
+                        temp_input = np.zeros(
+                            [batch_size_train, block_shape[0], block_shape[1], block_shape[2]])
+                        for j in range(temp_batch_size):
+                            temp_num = block_numbers[m + j]
+                            temp_block = test_data.blocks[temp_num]
+                            batch_numbers.append(temp_num)
+                            block_array = temp_block.load_data()
+                            data_block_shape = np.shape(block_array)
+                            temp_input[j, 0:data_block_shape[0], 0:data_block_shape[1],
+                            0:data_block_shape[2]] += block_array
+                        artery_predict = sess.run(artery_pred_mask, feed_dict={X: temp_input, training: False})
+                        for j in range(temp_batch_size):
+                            test_data.upload_result(batch_numbers[j], artery_predict[j, :, :, :])
+                        if (m) % (batch_size_train * 10) == 0:
+                            sys.stdout.write(
+                                "\r>>>deep learning calculating : %f" % ((1.0 * m) * 100 / blocks_num) + "%")
+                            sys.stdout.flush()
+
+                    sys.stdout.write("\r>>>deep learning calculating : %f" % (100.0) + "%")
+                    sys.stdout.flush()
+                    time2 = time.time()
+                    print "\ndeep learning time consume : ", str(time2 - time1)
+                    time3 = time.time()
+                    test_result_array = test_data.get_result()
+                    test_result_array = np.float32(test_result_array>=2)
+                    print "result shape: ", np.shape(test_result_array)
+                    r_s = np.shape(test_result_array)  # result shape
+                    e_t = 10  # edge thickness
+                    to_be_transformed = np.zeros(r_s, np.float32)
+                    to_be_transformed[e_t:r_s[0] - e_t, e_t:r_s[1] - e_t, 0:r_s[2] - e_t] += test_result_array[
+                                                                                             e_t:r_s[0] - e_t,
+                                                                                             e_t:r_s[1] - e_t,
+                                                                                             0:r_s[2] - e_t]
+                    print "maximum value in mask: ", np.max(to_be_transformed)
+                    print "minimum value in mask: ", np.min(to_be_transformed)
+                    final_img = ST.GetImageFromArray(np.transpose(to_be_transformed, [2, 1, 0]))
+                    final_img.SetSpacing(test_data.space)
+                    time4 = time.time()
+                    print "post processing time consume : ", str(time4 - time3)
+                    print "writing final testing result"
+                    if not os.path.exists('./test_result'):
+                        os.makedirs('./test_result')
+                    print './test_result/test_result_'+str(step_num)+'.vtk'
+                    ST.WriteImage(final_img, './test_result/test_result_'+str(step_num)+'.vtk')
+                    total_accuracy = 2*np.sum(1.0*test_mask_array*to_be_transformed)/np.sum(1.0*(test_mask_array+to_be_transformed))
+                    print "total IOU accuracy : ",total_accuracy
+                    if i==0:
+                        mask_img = ST.GetImageFromArray(np.transpose(test_mask_array,[2,1,0]))
+                        mask_img.SetSpacing(test_data.space)
+                        ST.WriteImage(mask_img,'./test_result/mask_img.vtk')
+                    print "***********************full testing end*******************************"
+                if i%10==0:
+                    sum_train,\
+                    l_val \
+                        = sess.run([merge_summary_op,
+                                    loss],
+                                   feed_dict={X: original_np,
+                                              lables: lable_np, training: False})
+                    summary_writer_train.add_summary(sum_train, global_step=int(step_num))
+                    print "train :\nstep %d , loss = %f\n =====================" \
+                          % (int(step_num), l_val)
+                if i%test_step ==0 and i>0:
+                    lable_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2], 3],
+                                        np.int16)
+                    original_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
+                                           np.int16)
                     for m in range(flags.batch_size_train):
                         '''
                         lable vector: [airway,artery,background]
                         '''
                         artery_data, airway_data, original_data = \
-                            sess.run([artery_block, airway_block, original_block])
+                            sess.run([artery_block_test, airway_block_test, original_block_test])
                         airway_array = airway_data
                         artery_array = artery_data
-                        back_ground_array = np.int16((airway_array+artery_array)==0)
-                        check_array = airway_array+artery_array+back_ground_array
-                        while not np.max(check_array) == np.min(check_array) ==1:
+                        back_ground_array = np.int16((airway_array + artery_array) == 0)
+                        check_array = airway_array + artery_array + back_ground_array
+                        while not np.max(check_array) == np.min(check_array) == 1:
                             artery_data, airway_data, original_data = \
                                 sess.run([artery_block, airway_block, original_block])
                             airway_array = airway_data
                             artery_array = artery_data
                             back_ground_array = np.int16((airway_array + artery_array) == 0)
                             check_array = airway_array + artery_array + back_ground_array
-                        lable_np[m, :, :, :, 0] += airway_array
-                        lable_np[m, :, :, :, 1] += artery_array
-                        lable_np[m, :, :, :, 2] += back_ground_array
-                        original_np[m, :, :, :] += original_data
-                    train_,step_num = sess.run([train_op, global_step],
-                                                               feed_dict={X: original_np,
-                                                                          lables: lable_np, training: True})
-                    if i%10==0:
-                        sum_train, accuracy_artery, \
-                        l_val \
-                            = sess.run([merge_summary_op, artery_acc,
-                                        loss],
-                                       feed_dict={X: original_np,
-                                                  artery_lable: lable_np, training: False})
-                        summary_writer_train.add_summary(sum_train, global_step=int(step_num))
-                        print "train :\nstep %d , loss = %f\n =====================" \
-                              % (int(step_num), loss)
-                    if i%test_step ==0 and i>0:
-                        lable_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2], 3],
-                                            np.int16)
-                        original_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
-                                               np.int16)
-                        for m in range(flags.batch_size_train):
-                            '''
-                            lable vector: [airway,artery,background]
-                            '''
-                            artery_data, airway_data, original_data = \
-                                sess.run([artery_block_test, airway_block_test, original_block_test])
-                            airway_array = airway_data
-                            artery_array = artery_data
-                            back_ground_array = np.int16((airway_array + artery_array) == 0)
-                            check_array = airway_array + artery_array + back_ground_array
-                            while not np.max(check_array) == np.min(check_array) == 1:
-                                artery_data, airway_data, original_data = \
-                                    sess.run([artery_block, airway_block, original_block])
-                                airway_array = airway_data
-                                artery_array = artery_data
-                                back_ground_array = np.int16((airway_array + artery_array) == 0)
-                                check_array = airway_array + artery_array + back_ground_array
-                            lable_np_test[m, :, :, :, 0] += airway_array
-                            lable_np_test[m, :, :, :, 1] += artery_array
-                            lable_np_test[m, :, :, :, 2] += back_ground_array
-                            original_np_test[m, :, :, :] += original_data
-                        sum_test, accuracy_artery, l_val, predict_array = \
-                            sess.run([merge_summary_op,artery_acc,loss,seg_pred],
-                                feed_dict={X: original_np_test,artery_lable: lable_np_test, training: False})
-                        summary_writer_test.add_summary(sum_test, global_step=int(step_num))
-                        print "\ntest :\nstep %d , artery loss = %f \n\t artery accuracy = %f\n=====================" \
-                              % (int(step_num), l_val, accuracy_artery)
-                        print "artery percentage : ", str(np.float32(np.sum(np.float32(lable_np_test[:, :, :, :, 1])) / (flags.batch_size_train * block_shape[0] * block_shape[1] * block_shape[2])))
-                        # print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
-                        print "prediction of artery : maximum = ", np.max(predict_array[:, :, :, :, 1]), " minimum = ", np.min(predict_array[:, :, :, :, 1]), '\n'
+                        lable_np_test[m, :, :, :, 0] += airway_array
+                        lable_np_test[m, :, :, :, 1] += artery_array
+                        lable_np_test[m, :, :, :, 2] += back_ground_array
+                        original_np_test[m, :, :, :] += original_data
+                    sum_test, accuracy_artery, l_val, predict_array = \
+                        sess.run([merge_summary_op,artery_acc,loss,pred_map],
+                            feed_dict={X: original_np_test,lables: lable_np_test, training: False})
+                    summary_writer_test.add_summary(sum_test, global_step=int(step_num))
+                    print "\ntest :\nstep %d , artery loss = %f \n\t artery block accuracy = %f\n=====================" \
+                          % (int(step_num), l_val, accuracy_artery)
+                    print "artery percentage : ", str(np.float32(np.sum(np.float32(lable_np_test[:, :, :, :, 1])) / (flags.batch_size_train * block_shape[0] * block_shape[1] * block_shape[2])))
+                    # print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
+                    print "prediction : maximum = ", np.max(predict_array), " minimum = ", np.min(predict_array)
+                if i%100 ==0:
+                    saver.save(sess,self.train_models_dir+"train_models.ckpt")
+                    print "regular model saved! step count : ",step_num
 
-                    if i%100 ==0:
-                        saver.save(sess,self.train_models_dir+"train_models.ckpt")
-                        print "regular model saved! step count : ",step_num
-            except Exception,e:
-                print e
-                # exit(2)
-                coord.request_stop(e)
             coord.request_stop()
             coord.join(enqueue_threads)
             coord.join(enqueue_threads_test)
