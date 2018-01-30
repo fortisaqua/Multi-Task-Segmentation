@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_float(
-    'airway_weight',5,
+    'airway_weight',1,
     'weight of airway segmentation branch while doing the training'
 )
 
@@ -79,7 +79,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'artery_weight',1,
+    'artery_weight',10,
     'weight of artery segmentation branch while doing the training'
 )
 
@@ -96,6 +96,11 @@ tf.app.flags.DEFINE_float(
 tf.app.flags.DEFINE_float(
     'lung_fore_weight',0.8,
     'foreground weight for lost function of lung part'
+)
+
+tf.app.flags.DEFINE_float(
+    'back_ground_weight',0.1,
+    'background weight'
 )
 
 tf.app.flags.DEFINE_float(
