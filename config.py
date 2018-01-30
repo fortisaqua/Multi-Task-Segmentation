@@ -24,7 +24,7 @@ tf.app.flags.DEFINE_integer(
     'shape of single data block'
 )
 tf.app.flags.DEFINE_integer(
-    'block_shape_3',64,
+    'block_shape_3',128,
     'shape of single data block'
 )
 
@@ -104,7 +104,7 @@ tf.app.flags.DEFINE_float(
 )
 
 tf.app.flags.DEFINE_float(
-    'accept_threshold',0.5,
+    'accept_threshold',0.8,
     'threshold for judging if the corresponding pixel can be classfied as foreground'
 )
 

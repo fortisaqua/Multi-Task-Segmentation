@@ -309,7 +309,42 @@ class Network():
                         summary_writer_train.add_summary(sum_train, global_step=int(step_num))
                         print "train :\nstep %d , loss = %f\n =====================" \
                               % (int(step_num), loss)
-                    # if i%test_step ==0 and i>0:
+                    if i%test_step ==0 and i>0:
+                        lable_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2], 3],
+                                            np.int16)
+                        original_np_test = np.zeros([batch_size_train, block_shape[0], block_shape[1], block_shape[2]],
+                                               np.int16)
+                        for m in range(flags.batch_size_train):
+                            '''
+                            lable vector: [airway,artery,background]
+                            '''
+                            artery_data, airway_data, original_data = \
+                                sess.run([artery_block_test, airway_block_test, original_block_test])
+                            airway_array = airway_data
+                            artery_array = artery_data
+                            back_ground_array = np.int16((airway_array + artery_array) == 0)
+                            check_array = airway_array + artery_array + back_ground_array
+                            while not np.max(check_array) == np.min(check_array) == 1:
+                                artery_data, airway_data, original_data = \
+                                    sess.run([artery_block, airway_block, original_block])
+                                airway_array = airway_data
+                                artery_array = artery_data
+                                back_ground_array = np.int16((airway_array + artery_array) == 0)
+                                check_array = airway_array + artery_array + back_ground_array
+                            lable_np_test[m, :, :, :, 0] += airway_array
+                            lable_np_test[m, :, :, :, 1] += artery_array
+                            lable_np_test[m, :, :, :, 2] += back_ground_array
+                            original_np_test[m, :, :, :] += original_data
+                        sum_test, accuracy_artery, l_val, predict_array = \
+                            sess.run([merge_summary_op,artery_acc,loss,seg_pred],
+                                feed_dict={X: original_np_test,artery_lable: lable_np_test, training: False})
+                        summary_writer_test.add_summary(sum_test, global_step=int(step_num))
+                        print "\ntest :\nstep %d , artery loss = %f \n\t artery accuracy = %f\n=====================" \
+                              % (int(step_num), l_val, accuracy_artery)
+                        print "artery percentage : ", str(np.float32(np.sum(np.float32(lable_np_test[:, :, :, :, 1])) / (flags.batch_size_train * block_shape[0] * block_shape[1] * block_shape[2])))
+                        # print "prediction of airway : maximum = ",np.max(airway_np_sig)," minimum = ",np.min(airway_np_sig)
+                        print "prediction of artery : maximum = ", np.max(predict_array[:, :, :, :, 1]), " minimum = ", np.min(predict_array[:, :, :, :, 1]), '\n'
+
                     if i%100 ==0:
                         saver.save(sess,self.train_models_dir+"train_models.ckpt")
                         print "regular model saved! step count : ",step_num
