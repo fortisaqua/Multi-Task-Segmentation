@@ -307,13 +307,12 @@ class Network():
                                        feed_dict={X: original_np,
                                                   artery_lable: lable_np, training: False})
                         summary_writer_train.add_summary(sum_train, global_step=int(step_num))
-                        print "train :\nstep %d , loss = %f\n\t\t\t block accuracy = %f\n =====================" \
-                              % (int(step_num), loss
-                                 , accuracy_artery)
+                        print "train :\nstep %d , loss = %f\n =====================" \
+                              % (int(step_num), loss)
                     # if i%test_step ==0 and i>0:
-                    # if i%100 ==0:
-                    #     saver.save(sess,self.train_models_dir+"train_models.ckpt")
-                    #     print "regular model saved! step count : ",step_num
+                    if i%100 ==0:
+                        saver.save(sess,self.train_models_dir+"train_models.ckpt")
+                        print "regular model saved! step count : ",step_num
             except Exception,e:
                 print e
                 # exit(2)
