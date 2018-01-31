@@ -56,16 +56,17 @@ class Network():
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
         growth_down = 6
-        depth_down = 6
+        depth_down = 10
 
         with tf.variable_scope(name+'_segment'):
             # up sample input 1
             up_sample_input_1 = tf.concat([inputs,down_2],axis=4,name='up_sample_input_1')
             # up sample 1
             up_sample_1 = tools.Ops.deconv3d(up_sample_input_1,k=2,
-                                             out_c=original_down+3*(growth_down*depth_down),str=2,name='up_sample_1')
+                                             out_c=original_down+2*(growth_down*depth_down),str=2,name='up_sample_1')
 
-            up_bn_1 = tools.Ops.batch_norm(up_sample_1,name_scope='up_bn_1',training=training)
+            up_sample_1_conv = tools.Ops.conv3d(up_sample_1, k=3, out_c=original_down+2*(growth_down*depth_down), str=1, name='up_sample_1_conv')
+            up_bn_1 = tools.Ops.batch_norm(up_sample_1_conv,name_scope='up_bn_1',training=training)
             # dense block 4
             # dense_block_output_4 = self.dense_block(up_sample_1,growth_up,depth_up,'dense_block_4',training,scope='dense_block_4')
 
@@ -74,12 +75,12 @@ class Network():
             # up sample 2
             up_sample_2 = tools.Ops.deconv3d(up_sample_input_2,k=2,
                                              out_c=original_down+2*(growth_down*depth_down),str=2,name='up_sample_2')
-
+            up_sample_2_conv = tools.Ops.conv3d(up_sample_2, k=3, out_c=original_down+2*(growth_down*depth_down), str=1, name='up_sample_2_conv')
             # dense block 5
             # dense_block_output_5 = self.dense_block(up_sample_2,growth_up,depth_up,'dense_block_5',training,scope='dense_block_5')
 
             # segment input
-            up_bn_2 = tools.Ops.batch_norm(up_sample_2,name_scope='up_bn_2',training=training)
+            up_bn_2 = tools.Ops.batch_norm(up_sample_2_conv,name_scope='up_bn_2',training=training)
             segment_input = tf.concat([up_bn_2,input_1],axis=4,name='segment_input')
             # segment conv 1
             segment_conv_1 = tools.Ops.conv3d(segment_input,k=3,
@@ -98,17 +99,17 @@ class Network():
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
         growth_down = 6
-        depth_down = 6
+        depth_down = 10
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
         with tf.variable_scope('feature_extract'):
             # dense block 1
             dense_block_input_1 = tools.Ops.conv3d(X,k=3,out_c=original_down,str=1,name='dense_block_input_1')
-            dense_block_output_1 = self.dense_block(dense_block_input_1,growth_down,depth_down,'dense_block_1',training,scope='dense_block_1')
+            # dense_block_output_1 = self.dense_block(dense_block_input_1,growth_down,depth_down,'dense_block_1',training,scope='dense_block_1')
 
             # down sample 1
-            down_sample_1 = tools.Ops.conv3d(dense_block_output_1,k=2,out_c=original_down+1*(growth_down*depth_down),str=2,name='down_sample_1')
+            down_sample_1 = tools.Ops.conv3d(dense_block_input_1,k=2,out_c=original_down+1*(growth_down*depth_down),str=2,name='down_sample_1')
 
             # dense block 2
             dense_block_output_2 = self.dense_block(down_sample_1,growth_down,depth_down,'dense_block_2',training,scope='dense_block_2')
