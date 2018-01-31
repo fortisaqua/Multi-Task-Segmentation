@@ -82,16 +82,16 @@ class Network():
             up_bn_2 = tools.Ops.batch_norm(up_sample_2,name_scope='up_bn_2',training=training)
             segment_input = tf.concat([up_bn_2,input_1],axis=4,name='segment_input')
             # segment conv 1
-            segment_conv_1 = tools.Ops.conv3d(segment_input,k=1,
+            segment_conv_1 = tools.Ops.conv3d(segment_input,k=3,
                                               out_c=original_down+1*(growth_down*depth_down),str=1,name='segment_conv_1')
             # segment conv 2
             segment_bn_1 = tools.Ops.batch_norm(segment_conv_1,name_scope='bn_segment_1',training=training)
             relu_1 = tools.Ops.xxlu(segment_bn_1,name='lrelu')
-            segment_conv_2 = tools.Ops.conv3d(relu_1,k=1,out_c=32,str=1,name='segment_conv_2')
+            segment_conv_2 = tools.Ops.conv3d(relu_1,k=3,out_c=32,str=1,name='segment_conv_2')
             # segment input
             segment_input = tools.Ops.xxlu(tools.Ops.batch_norm(segment_conv_2,name_scope='bn_segment_2',training=training),name='lrelu')
             # segment predict
-            segment_predict = tools.Ops.conv3d(segment_input,k=1,out_c=3,str=1,name='segment_predict')
+            segment_predict = tools.Ops.conv3d(segment_input,k=3,out_c=3,str=1,name='segment_predict')
 
             return segment_predict
 
@@ -190,7 +190,8 @@ class Network():
         tf.summary.scalar('loss', loss)
 
         # accuracy
-        pred_map = tf.argmax(seg_pred,axis=-1)
+        predict_softmax = tf.nn.softmax(seg_pred)
+        pred_map = tf.argmax(predict_softmax,axis=-1)
         pred_map_bool = tf.equal(pred_map,1)
         artery_pred_mask = tf.cast(pred_map_bool,tf.float32)
         artery_lable = tf.cast(lables[:, :, :, :, 1],tf.float32)
