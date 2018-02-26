@@ -55,8 +55,8 @@ class Network():
 
     def Segment_part(self,inputs,input_1,down_1,down_2,name,training,threshold):
         original_down = 16
-        growth_down = 6
-        depth_down = 10
+        growth_down = 12
+        depth_down = 8
 
         with tf.variable_scope(name+'_segment'):
             # up sample input 1
@@ -98,8 +98,8 @@ class Network():
 
     def Dense_Net(self,inputs,training,batch_size,threshold):
         original_down = 16
-        growth_down = 6
-        depth_down = 10
+        growth_down = 12
+        depth_down = 8
         casted_inputs = tf.cast(inputs,tf.float32)
         X = tf.reshape(casted_inputs,[batch_size,self.block_shape[0],self.block_shape[1],self.block_shape[2],1],name='input')
 
@@ -120,10 +120,10 @@ class Network():
             # dense block 3
             dense_block_output_3 = self.dense_block(down_sample_2,growth_down,depth_down,'dense_block_3',training,scope='dense_block_3')
 
-        artery_predict = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
-                                         name='artery', training=training, threshold=threshold)
+        seg_predict = self.Segment_part(dense_block_output_3, dense_block_input_1, down_sample_1, down_sample_2,
+                                         name='airway', training=training, threshold=threshold)
 
-        return artery_predict
+        return seg_predict
 
     # check if the network is correct
     def check_net(self):
@@ -191,14 +191,14 @@ class Network():
         tf.summary.scalar('loss', loss)
 
         # accuracy
-        predict_softmax = tf.nn.softmax(seg_pred)
-        pred_map = tf.argmax(predict_softmax,axis=-1)
+        # predict_softmax = tf.nn.softmax(seg_pred)
+        pred_map = tf.argmax(seg_pred,axis=-1)
         pred_map_bool = tf.equal(pred_map,1)
         artery_pred_mask = tf.cast(pred_map_bool,tf.float32)
-        artery_lable = tf.cast(lables[:, :, :, :, 1],tf.float32)
+        artery_lable = tf.cast(lables[:, :, :, :, 0],tf.float32)
         artery_acc = 2 * tf.reduce_sum(artery_lable * artery_pred_mask) / (
                 tf.reduce_sum(artery_lable + artery_pred_mask))
-        tf.summary.scalar('artery_block_acc', artery_acc)
+        tf.summary.scalar('airway_block_acc', artery_acc)
 
         # data part
         records = ut.get_records(record_dir)
@@ -240,7 +240,7 @@ class Network():
 
         global_step = tf.Variable(0, trainable=False)
         learning_rate = tf.maximum(
-            tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 13500 / flags.batch_size_train,
+            tf.train.exponential_decay(LEARNING_RATE_BASE, global_step, 13500*5 / flags.batch_size_train,
                                        LEARNING_RATE_DECAY, staircase=True), 1e-9)
         train_op = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(loss,global_step)
         # merge operation for tensorboard summary
